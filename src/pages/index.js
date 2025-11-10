@@ -8,6 +8,60 @@ import { SunIcon, MoonIcon } from "@radix-ui/react-icons";
 import { cn } from "@/lib/utils";
 import Logo from "@/components/logo";
 
+const STORAGE_KEY = "portfolio-builder-data-v1";
+
+const mergeObjects = (prev = {}, next = {}, respectExisting = false) => {
+  if (!next || typeof next !== "object" || Array.isArray(next)) {
+    return prev || {};
+  }
+
+  let changed = false;
+  const result = { ...(prev || {}) };
+
+  Object.entries(next).forEach(([key, value]) => {
+    const shouldReplace =
+      !respectExisting || result[key] === undefined || result[key] === null || result[key] === "";
+
+    if (shouldReplace && result[key] !== value) {
+      result[key] = value;
+      changed = true;
+    }
+  });
+
+  return changed ? result : prev || {};
+};
+
+const arraysEqual = (a, b) => {
+  if (a === b) return true;
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    const left = a[i];
+    const right = b[i];
+    if (typeof left === "object" || typeof right === "object") {
+      if (JSON.stringify(left) !== JSON.stringify(right)) {
+        return false;
+      }
+    } else if (left !== right) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const mergeArrays = (prev = [], next = [], respectExisting = false) => {
+  if (!Array.isArray(next)) return prev || [];
+  if (respectExisting && Array.isArray(prev) && prev.length) return prev || [];
+  if (arraysEqual(prev, next)) return prev || [];
+  return next;
+};
+
+const restoreScrollPosition = (scrollY) => {
+  if (typeof window === "undefined" || scrollY == null) return;
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: scrollY, behavior: "auto" });
+  });
+};
+
 export default function Home() {
   const [profile, setProfile] = useState({ name: "", headline: "", bio: "", avatar: "" });
   const [projects, setProjects] = useState([]);
@@ -37,7 +91,6 @@ export default function Home() {
   const hasUserInteractedRef = useRef(false);
   const { theme, setTheme } = useTheme();
   const resolvedTheme = theme === "system" ? undefined : theme;
-  const STORAGE_KEY = "portfolio-builder-data-v1";
 
   const markInteracted = () => {
     if (!hasUserInteractedRef.current) {
@@ -45,29 +98,12 @@ export default function Home() {
     }
   };
 
-  const mergeObjects = (prev = {}, next = {}, respectExisting = false) => {
-    if (!next || typeof next !== "object") return prev || {};
-    const merged = { ...(prev || {}) };
-    Object.entries(next).forEach(([key, value]) => {
-      if (!respectExisting || merged[key] === undefined || merged[key] === null || merged[key] === "") {
-        merged[key] = value;
-      }
-    });
-    return merged;
-  };
-
-  const mergeArrays = (prev = [], next = [], respectExisting = false) => {
-    if (!Array.isArray(next)) return prev || [];
-    if (respectExisting && Array.isArray(prev) && prev.length) {
-      return prev;
-    }
-    return next;
-  };
-
   const applyData = (data = {}, options = {}) => {
     if (!data || typeof data !== "object") return;
+
     const { overwrite = false } = options;
     const respectExisting = !overwrite;
+    const previousScrollY = typeof window !== "undefined" ? window.scrollY : null;
 
     if (data.profile) {
       setProfile((prev) => mergeObjects(prev, data.profile, respectExisting));
@@ -94,11 +130,21 @@ export default function Home() {
       setResponsibilities((prev) => mergeArrays(prev, data.responsibilities, respectExisting));
     }
     if (typeof data.profession === "string") {
-      setProfession((prev) => (respectExisting && prev ? prev : data.profession || ""));
+      setProfession((prev) => {
+        if (respectExisting && prev) return prev;
+        const nextValue = data.profession || "";
+        return prev === nextValue ? prev : nextValue;
+      });
     }
     if (typeof data.customProfession === "string") {
-      setCustomProfession((prev) => (respectExisting && prev ? prev : data.customProfession || ""));
+      setCustomProfession((prev) => {
+        if (respectExisting && prev) return prev;
+        const nextValue = data.customProfession || "";
+        return prev === nextValue ? prev : nextValue;
+      });
     }
+
+    restoreScrollPosition(previousScrollY);
   };
 
   const buildSnapshot = (overrides = {}) => ({
