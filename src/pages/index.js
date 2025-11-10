@@ -33,8 +33,78 @@ export default function Home() {
   const [previewMode, setPreviewMode] = useState(false);
   const [aiLoading, setAiLoading] = useState({});
   const fileInputRef = useRef(null);
+  const hasMountedRef = useRef(false);
   const { theme, setTheme } = useTheme();
   const resolvedTheme = theme === "system" ? undefined : theme;
+  const STORAGE_KEY = "portfolio-builder-data-v1";
+
+  const applyData = (data = {}) => {
+    if (!data || typeof data !== "object") return;
+    if (data.profile) setProfile(data.profile || {});
+    if (data.projects) setProjects(data.projects || []);
+    if (data.social) setSocial(data.social || {});
+    if (data.skills) setSkills(data.skills || []);
+    if (data.experience) setExperience(data.experience || []);
+    if (data.education) setEducation(data.education || []);
+    if (data.contact) setContact(data.contact || {});
+    if (typeof data.profession === "string") setProfession(data.profession);
+    if (typeof data.customProfession === "string") setCustomProfession(data.customProfession);
+    if (Array.isArray(data.responsibilities)) setResponsibilities(data.responsibilities);
+  };
+
+  const buildSnapshot = (overrides = {}) => ({
+    profile: overrides.profile ?? profile,
+    projects: overrides.projects ?? projects,
+    social: overrides.social ?? social,
+    skills: overrides.skills ?? skills,
+    experience: overrides.experience ?? experience,
+    education: overrides.education ?? education,
+    contact: overrides.contact ?? contact,
+    profession: overrides.profession ?? profession,
+    customProfession: overrides.customProfession ?? customProfession,
+    responsibilities: overrides.responsibilities ?? responsibilities,
+  });
+
+  const persistLocally = (data) => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (err) {
+      console.error("Failed to persist portfolio data locally:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        applyData(parsed);
+      }
+    } catch (err) {
+      console.error("Failed to load portfolio data from local storage:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    persistLocally(buildSnapshot());
+  }, [
+    profile,
+    projects,
+    social,
+    skills,
+    experience,
+    education,
+    contact,
+    profession,
+    customProfession,
+    responsibilities,
+  ]);
 
   useEffect(() => {
     // Load occupations
@@ -50,16 +120,7 @@ export default function Home() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d) {
-          if (d.profile) setProfile(d.profile);
-          if (d.projects) setProjects(d.projects || []);
-          if (d.social) setSocial(d.social || {});
-          if (d.skills) setSkills(d.skills || []);
-          if (d.experience) setExperience(d.experience || []);
-          if (d.education) setEducation(d.education || []);
-          if (d.contact) setContact(d.contact || {});
-          if (d.profession) setProfession(d.profession || "");
-          if (d.customProfession) setCustomProfession(d.customProfession || "");
-          if (d.responsibilities) setResponsibilities(d.responsibilities || []);
+          applyData(d);
         }
       })
       .catch((err) => {
@@ -92,63 +153,47 @@ export default function Home() {
     });
 
   const handleAvatarUpload = async (e) => {
-    console.log("handleAvatarUpload called", e.target.files);
     const file = e.target.files?.[0];
     if (!file) {
-      console.log("No file selected");
       setStatus("No file selected");
       setTimeout(() => setStatus(""), 2000);
       return;
     }
-    console.log("File selected:", file.name, file.type, file.size);
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       setStatus("Please select an image file");
       setTimeout(() => setStatus(""), 2000);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
-    // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       setStatus("File size must be less than 5MB");
       setTimeout(() => setStatus(""), 2000);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      const res = await fetch("/api/uploads", {
-        method: "POST",
-        body: formData,
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
       });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: "Upload failed" }));
-        throw new Error(errorData.error || "Upload failed");
-      }
-      
-      const data = await res.json();
-      if (data.url) {
-        update("avatar", data.url);
-        setStatus("Avatar uploaded ✓");
-        setTimeout(() => setStatus(""), 2000);
-      } else {
-        throw new Error(data.error || "No URL returned");
-      }
+
+      const nextProfile = { ...profile, avatar: dataUrl };
+      setProfile(nextProfile);
+      persistLocally(buildSnapshot({ profile: nextProfile }));
+      setStatus("Photo updated");
     } catch (err) {
-      console.error("Upload error:", err);
-      setStatus(`Upload failed: ${err.message || "Unknown error"}`);
-      setTimeout(() => setStatus(""), 3000);
+      console.error("Failed to read avatar:", err);
+      setStatus("Failed to load image");
     } finally {
       setUploading(false);
-      // Reset file input to allow re-uploading the same file
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setTimeout(() => setStatus(""), 2000);
     }
   };
 
@@ -298,9 +343,6 @@ export default function Home() {
   const removeEdu = (id) => setEducation(education.filter((e) => e.id !== id));
 
   const resetAll = async () => {
-    if (!confirm("Are you sure you want to reset all data? This action cannot be undone.")) {
-      return;
-    }
     setProfile({ name: "", headline: "", bio: "", avatar: "" });
     setProjects([]);
     setSocial({ github: "", linkedin: "", twitter: "", website: "", email: "" });
@@ -311,21 +353,20 @@ export default function Home() {
     setProfession("");
     setCustomProfession("");
     setResponsibilities([]);
-    setStatus("Data reset ✓");
-    setTimeout(() => setStatus(""), 2000);
-    
-    // Also clear from server
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(STORAGE_KEY);
+    }
     try {
       await fetch("/api/me/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          profile: {}, 
-          projects: [], 
-          social: {}, 
-          skills: [], 
-          experience: [], 
-          education: [], 
+        body: JSON.stringify({
+          profile: {},
+          projects: [],
+          social: {},
+          skills: [],
+          experience: [],
+          education: [],
           contact: {},
           profession: "",
           customProfession: "",
@@ -338,17 +379,22 @@ export default function Home() {
   };
 
   const save = async () => {
+    const snapshot = buildSnapshot();
+    persistLocally(snapshot);
     setStatus("Saving...");
     try {
       const res = await fetch("/api/me/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, projects, social, skills, experience, education, contact, profession, customProfession, responsibilities }),
+        body: JSON.stringify(snapshot),
       });
-      setStatus(res.ok ? "Saved ✓" : "Error");
+      if (!res.ok) {
+        throw new Error(`Request failed with status ${res.status}`);
+      }
+      setStatus("Saved ✓");
     } catch (err) {
       console.error("Failed to save profile:", err);
-      setStatus("Error saving");
+      setStatus("Saved locally (offline)");
     }
     setTimeout(() => setStatus(""), 2000);
   };

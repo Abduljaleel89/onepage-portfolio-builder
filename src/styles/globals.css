@@ -168,7 +168,7 @@
 
 /* Smooth Scroll */
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 /* Premium Button Effects */
