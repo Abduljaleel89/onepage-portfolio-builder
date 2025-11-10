@@ -1,0 +1,57 @@
+﻿[
+  {
+    "slug": "designer",
+    "title": "Designer",
+    "skills": [
+      "UI/Visual Design",
+      "Interaction Design",
+      "Figma / Sketch",
+      "Prototyping",
+      "Design Systems",
+      "Typography"
+    ],
+    "responsibilities": [
+      "Create high-fidelity UI mockups",
+      "Develop and maintain design system",
+      "Collaborate with product & engineering",
+      "Conduct usability testing and iterate",
+      "Translate requirements into polished interfaces"
+    ]
+  },
+  {
+    "slug": "developer",
+    "title": "Developer",
+    "skills": [
+      "JavaScript / TypeScript",
+      "React / Next.js",
+      "REST / GraphQL",
+      "CSS / Responsive Layouts",
+      "Testing (Jest, RTL)",
+      "CI/CD basics"
+    ],
+    "responsibilities": [
+      "Build reusable UI components",
+      "Integrate APIs and maintain clients",
+      "Write unit & integration tests",
+      "Optimize performance and accessibility",
+      "Deploy features and maintain CI pipelines"
+    ]
+  },
+  {
+    "slug": "student",
+    "title": "Student / Recent Grad",
+    "skills": [
+      "Problem solving",
+      "Project collaboration",
+      "Basic web development",
+      "Version control (Git)",
+      "Presentation & communication"
+    ],
+    "responsibilities": [
+      "Assist on small feature development",
+      "Participate in code reviews and labs",
+      "Prepare academic or portfolio projects",
+      "Document learning and project outcomes"
+    ]
+  }
+]

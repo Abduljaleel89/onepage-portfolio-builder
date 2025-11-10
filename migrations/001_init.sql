@@ -1,0 +1,3 @@
+-- migrations/001_init.sql
+-- Placeholder SQL migration. We'll replace with full Postgres SQL when we switch to Postgres.
+-- For now the app uses data/db.json for local persistence.
