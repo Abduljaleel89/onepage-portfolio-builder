@@ -58,19 +58,47 @@ const withFocusGuard = (callback) => {
     callback();
     return;
   }
+
   const activeElement = document.activeElement;
+  const focusKey = activeElement?.dataset?.focusKey;
+  const selection =
+    activeElement && "selectionStart" in activeElement
+      ? {
+          start: activeElement.selectionStart,
+          end: activeElement.selectionEnd,
+          direction: activeElement.selectionDirection,
+        }
+      : null;
+
   callback();
-  if (activeElement && activeElement instanceof HTMLElement) {
-    requestAnimationFrame(() => {
-      try {
+
+  requestAnimationFrame(() => {
+    try {
+      if (focusKey) {
+        const target = document.querySelector(`[data-focus-key="${focusKey}"]`);
+        if (target instanceof HTMLElement) {
+          target.focus({ preventScroll: true });
+          if (selection && "setSelectionRange" in target) {
+            const { start, end, direction } = selection;
+            if (start != null && end != null) {
+              target.setSelectionRange(start, end, direction || "none");
+            }
+          }
+          return;
+        }
+      }
+
+      if (activeElement instanceof HTMLElement) {
         if (document.contains(activeElement)) {
           activeElement.focus({ preventScroll: true });
+        } else if (typeof activeElement.focus === "function") {
+          activeElement.focus();
         }
-      } catch (err) {
-        activeElement.focus();
       }
-    });
-  }
+    } catch (err) {
+      console.warn("Failed to restore focus", err);
+    }
+  });
 };
 
 const formatTemplate = (template, replacements = {}) => {
@@ -314,8 +342,10 @@ export default function Home() {
               <div className="border-b-2 border-primary pb-6 mb-6 bg-gradient-to-r from-blue-50/50 to-purple-50/50 -mx-8 px-8 py-6 print:bg-transparent">
                 <div className="flex items-start justify-between gap-6">
                   <div className="flex-1 animate-slide-in-right">
-                    <h1 className="text-4xl font-bold mb-2 text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{safeName}</h1>
-                    <p className="text-xl text-gray-600 mb-3 font-medium">{safeHeadline}</p>
+                    <h1 className="text-4xl font-bold mb-2 text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent print:text-black print:bg-none print:bg-transparent">
+                      {safeName}
+                    </h1>
+                    <p className="text-xl text-gray-600 mb-3 font-medium print:text-gray-900">{safeHeadline}</p>
                     <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                       {contactEntries.map((entry) => (
                         <span key={entry.label}>{entry.label}: {entry.value}</span>
@@ -953,18 +983,28 @@ export default function Home() {
               </div>
             </div>
             <div>
-              <label className="font-medium">Name</label>
-              <Input value={profile.name} onChange={(e) => update("name", e.target.value)} placeholder="John Doe" />
+              <label className="font-medium mb-2 block" htmlFor="profile-name">Name</label>
+              <Input
+                id="profile-name"
+                data-focus-key="profile.name"
+                value={profile.name}
+                placeholder="John Doe"
+                onChange={(e) => update("name", e.target.value)}
+              />
             </div>
             <div>
-              <label className="font-medium">Profession</label>
+              <label className="font-medium mb-2 block" htmlFor="profession-select">Profession</label>
               <select
+                id="profession-select"
+                data-focus-key="profile.profession"
                 value={profession}
                 onChange={(e) => {
                   markInteracted();
                   const value = e.target.value;
                   setProfession(value);
-                  if (value) setCustomProfession("");
+                  if (value) {
+                    withFocusGuard(() => setCustomProfession(""));
+                  }
                 }}
                 className="flex h-9 w-full rounded-md border border-input bg-background text-foreground px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                 style={{ 
@@ -993,6 +1033,7 @@ export default function Home() {
               <div className="mt-2">
                 <label className="text-sm text-muted-foreground">Or enter a custom profession:</label>
                 <Input 
+                  data-focus-key="profile.customProfession"
                   value={customProfession}
                   onChange={(e) => {
                     markInteracted();
@@ -1018,7 +1059,12 @@ export default function Home() {
                   {aiLoading.headline ? "✨ Generating..." : "✨ AI Generate"}
                 </Button>
               </div>
-              <Input value={profile.headline} onChange={(e) => update("headline", e.target.value)} placeholder="Full Stack Developer" />
+              <Input
+                data-focus-key="profile.headline"
+                value={profile.headline}
+                onChange={(e) => update("headline", e.target.value)}
+                placeholder="Full Stack Developer"
+              />
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -1046,7 +1092,13 @@ export default function Home() {
                   )}
                 </div>
               </div>
-              <Textarea rows={4} value={profile.bio} onChange={(e) => update("bio", e.target.value)} placeholder="Tell us about yourself..." />
+              <Textarea
+                data-focus-key="profile.bio"
+                value={profile.bio}
+                onChange={(e) => update("bio", e.target.value)}
+                placeholder="Tell us about yourself..."
+                className="min-h-[150px]"
+              />
             </div>
           </CardContent>
         </Card>
@@ -1055,24 +1107,50 @@ export default function Home() {
         <CollapsibleSection title="Social Media Links" isOpen={showSocial} onToggle={() => setShowSocial(!showSocial)}>
           <div className="space-y-4">
             <div>
-              <label className="font-medium">GitHub</label>
-              <Input value={social.github} onChange={(e) => updateSocial("github", e.target.value)} placeholder="https://github.com/username" />
+              <label className="font-medium mb-1 block">GitHub</label>
+              <Input
+                data-focus-key="social.github"
+                value={social.github}
+                onChange={(e) => updateSocial("github", e.target.value)}
+                placeholder="https://github.com/username"
+              />
             </div>
             <div>
-              <label className="font-medium">LinkedIn</label>
-              <Input value={social.linkedin} onChange={(e) => updateSocial("linkedin", e.target.value)} placeholder="https://linkedin.com/in/username" />
+              <label className="font-medium mb-1 block">LinkedIn</label>
+              <Input
+                data-focus-key="social.linkedin"
+                value={social.linkedin}
+                onChange={(e) => updateSocial("linkedin", e.target.value)}
+                placeholder="https://linkedin.com/in/username"
+              />
             </div>
             <div>
-              <label className="font-medium">Twitter</label>
-              <Input value={social.twitter} onChange={(e) => updateSocial("twitter", e.target.value)} placeholder="https://twitter.com/username" />
+              <label className="font-medium mb-1 block">Twitter</label>
+              <Input
+                data-focus-key="social.twitter"
+                value={social.twitter}
+                onChange={(e) => updateSocial("twitter", e.target.value)}
+                placeholder="https://twitter.com/username"
+              />
             </div>
             <div>
-              <label className="font-medium">Website</label>
-              <Input value={social.website} onChange={(e) => updateSocial("website", e.target.value)} placeholder="https://yourwebsite.com" />
+              <label className="font-medium mb-1 block">Website</label>
+              <Input
+                data-focus-key="social.website"
+                value={social.website}
+                onChange={(e) => updateSocial("website", e.target.value)}
+                placeholder="https://yourwebsite.com"
+              />
             </div>
             <div>
-              <label className="font-medium">Email</label>
-              <Input type="email" value={social.email} onChange={(e) => updateSocial("email", e.target.value)} placeholder="your@email.com" />
+              <label className="font-medium mb-1 block">Email</label>
+              <Input
+                type="email"
+                data-focus-key="social.email"
+                value={social.email}
+                onChange={(e) => updateSocial("email", e.target.value)}
+                placeholder="your@email.com"
+              />
             </div>
           </div>
         </CollapsibleSection>
@@ -1083,6 +1161,7 @@ export default function Home() {
             {responsibilities.map((resp, i) => (
               <div key={i} className="flex items-start gap-2">
                 <Textarea
+                  data-focus-key={`responsibilities.${i}`}
                   value={resp}
                   onChange={(e) => {
                     markInteracted();
@@ -1128,12 +1207,20 @@ export default function Home() {
           <div className="space-y-2">
             {skills.map((s) => (
               <div key={s.id} className="flex items-center gap-2">
-                <Input value={s.name} onChange={(e) => {
-                  markInteracted();
-                  const copy = [...skills];
-                  copy[copy.findIndex(sk => sk.id === s.id)].name = e.target.value;
-                  setSkills(copy);
-                }} placeholder="Skill name" />
+                <Input
+                  data-focus-key={`skills.${s.id}`}
+                  value={s.name}
+                  onChange={(e) => {
+                    markInteracted();
+                    const copy = [...skills];
+                    const index = copy.findIndex((sk) => sk.id === s.id);
+                    if (index !== -1) {
+                      copy[index] = { ...copy[index], name: e.target.value };
+                      withFocusGuard(() => setSkills(copy));
+                    }
+                  }}
+                  placeholder="Skill name"
+                />
                 <Button variant="ghost" size="sm" onClick={() => removeSkill(s.id)}>Remove</Button>
               </div>
             ))}
@@ -1164,10 +1251,31 @@ export default function Home() {
                   <h4 className="font-medium">Experience #{i + 1}</h4>
                   <Button variant="ghost" size="sm" onClick={() => removeExp(exp.id)}>Remove</Button>
                 </div>
-                <Input value={exp.role} onChange={(e) => updateExp(i, "role", e.target.value)} placeholder="Job Title" />
-                <Input value={exp.company} onChange={(e) => updateExp(i, "company", e.target.value)} placeholder="Company Name" />
-                <Input value={exp.period} onChange={(e) => updateExp(i, "period", e.target.value)} placeholder="Jan 2020 - Present" />
-                <Textarea value={exp.description} onChange={(e) => updateExp(i, "description", e.target.value)} rows={3} placeholder="Job description..." />
+                <Input
+                  data-focus-key={`experience.${exp.id}.role`}
+                  value={exp.role}
+                  onChange={(e) => updateExp(i, "role", e.target.value)}
+                  placeholder="Job Title"
+                />
+                <Input
+                  data-focus-key={`experience.${exp.id}.company`}
+                  value={exp.company}
+                  onChange={(e) => updateExp(i, "company", e.target.value)}
+                  placeholder="Company Name"
+                />
+                <Input
+                  data-focus-key={`experience.${exp.id}.period`}
+                  value={exp.period}
+                  onChange={(e) => updateExp(i, "period", e.target.value)}
+                  placeholder="Jan 2020 - Present"
+                />
+                <Textarea
+                  data-focus-key={`experience.${exp.id}.description`}
+                  value={exp.description}
+                  onChange={(e) => updateExp(i, "description", e.target.value)}
+                  rows={3}
+                  placeholder="Job description..."
+                />
               </div>
             ))}
             <Button type="button" onClick={addExp} variant="outline">+ Add Experience</Button>
@@ -1183,10 +1291,31 @@ export default function Home() {
                   <h4 className="font-medium">Education #{i + 1}</h4>
                   <Button variant="ghost" size="sm" onClick={() => removeEdu(edu.id)}>Remove</Button>
                 </div>
-                <Input value={edu.degree} onChange={(e) => updateEdu(i, "degree", e.target.value)} placeholder="Degree" />
-                <Input value={edu.institution} onChange={(e) => updateEdu(i, "institution", e.target.value)} placeholder="Institution" />
-                <Input value={edu.period} onChange={(e) => updateEdu(i, "period", e.target.value)} placeholder="2018 - 2022" />
-                <Textarea value={edu.description} onChange={(e) => updateEdu(i, "description", e.target.value)} rows={2} placeholder="Additional details..." />
+                <Input
+                  data-focus-key={`education.${edu.id}.degree`}
+                  value={edu.degree}
+                  onChange={(e) => updateEdu(i, "degree", e.target.value)}
+                  placeholder="Degree"
+                />
+                <Input
+                  data-focus-key={`education.${edu.id}.institution`}
+                  value={edu.institution}
+                  onChange={(e) => updateEdu(i, "institution", e.target.value)}
+                  placeholder="Institution"
+                />
+                <Input
+                  data-focus-key={`education.${edu.id}.period`}
+                  value={edu.period}
+                  onChange={(e) => updateEdu(i, "period", e.target.value)}
+                  placeholder="2018 - 2022"
+                />
+                <Textarea
+                  data-focus-key={`education.${edu.id}.description`}
+                  value={edu.description}
+                  onChange={(e) => updateEdu(i, "description", e.target.value)}
+                  rows={2}
+                  placeholder="Additional details..."
+                />
               </div>
             ))}
             <Button type="button" onClick={addEdu} variant="outline">+ Add Education</Button>
@@ -1200,41 +1329,50 @@ export default function Home() {
               <div key={p.id} className="border-b pb-4 space-y-2">
                 <div className="flex justify-between items-start">
                   <h4 className="font-medium">Project #{i + 1}</h4>
-                  <Button variant="ghost" size="sm" onClick={() => removeProj(p.id)}>Remove</Button>
-                </div>
-                <Input value={p.title} onChange={(e) => updateProj(i, "title", e.target.value)} placeholder="Project Title" />
-                <div className="relative">
-                  <Textarea value={p.description} onChange={(e) => updateProj(i, "description", e.target.value)} rows={2} placeholder="Project description..." />
-                  <div className="absolute top-2 right-2 flex gap-1">
-                    {p.title && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleAIProjectDescription(i)}
-                        disabled={aiLoading[`project-${i}`]}
-                        className="text-xs h-6 px-2"
-                        title="Generate description with AI"
-                      >
-                        {aiLoading[`project-${i}`] ? "✨" : "✨"}
-                      </Button>
-                    )}
-                    {p.description && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleAIOptimize("project-description", p.description, i)}
-                        disabled={aiLoading.optimize}
-                        className="text-xs h-6 px-2"
-                        title="Optimize description"
-                      >
-                        {aiLoading.optimize ? "⚡" : "⚡"}
-                      </Button>
-                    )}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleAIOptimize("project-description", p.description || "", i)}
+                      disabled={aiLoading[`project-${p.id}`]}
+                      className="premium-button cinematic-glow-hover"
+                    >
+                      {aiLoading[`project-${p.id}`] ? "⚙️ Optimizing..." : "⚡ Optimize"}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => removeProj(p.id)}>Remove</Button>
                   </div>
                 </div>
-                <Input value={p.image || ""} onChange={(e) => updateProj(i, "image", e.target.value)} placeholder="Image URL" />
-                <Input value={p.link || ""} onChange={(e) => updateProj(i, "link", e.target.value)} placeholder="Project URL" />
-                <Input value={(p.tags || []).join(", ")} onChange={(e) => updateProj(i, "tags", e.target.value.split(",").map(t => t.trim()).filter(t => t))} placeholder="Tags (comma separated)" />
+                <Input
+                  data-focus-key={`projects.${p.id}.title`}
+                  value={p.title}
+                  onChange={(e) => updateProj(i, "title", e.target.value)}
+                  placeholder="Project Title"
+                />
+                <Textarea
+                  data-focus-key={`projects.${p.id}.description`}
+                  value={p.description}
+                  onChange={(e) => updateProj(i, "description", e.target.value)}
+                  rows={2}
+                  placeholder="Project description..."
+                />
+                <Input
+                  data-focus-key={`projects.${p.id}.image`}
+                  value={p.image || ""}
+                  onChange={(e) => updateProj(i, "image", e.target.value)}
+                  placeholder="Image URL"
+                />
+                <Input
+                  data-focus-key={`projects.${p.id}.link`}
+                  value={p.link || ""}
+                  onChange={(e) => updateProj(i, "link", e.target.value)}
+                  placeholder="Project URL"
+                />
+                <Input
+                  data-focus-key={`projects.${p.id}.tags`}
+                  value={(p.tags || []).join(", ")}
+                  onChange={(e) => updateProj(i, "tags", e.target.value.split(",").map((t) => t.trim()).filter((t) => t))}
+                  placeholder="Tags (comma separated)"
+                />
               </div>
             ))}
             <Button type="button" onClick={addProj} variant="outline">+ Add Project</Button>
@@ -1243,18 +1381,34 @@ export default function Home() {
 
         {/* Contact */}
         <CollapsibleSection title="Contact Information" isOpen={showContact} onToggle={() => setShowContact(!showContact)}>
-          <div className="space-y-4">
+          <div className="grid gap-4">
             <div>
-              <label className="font-medium">Email</label>
-              <Input type="email" value={contact.email} onChange={(e) => updateContact("email", e.target.value)} placeholder="your@email.com" />
+              <label className="font-medium mb-1 block">Email</label>
+              <Input
+                type="email"
+                data-focus-key="contact.email"
+                value={contact.email}
+                onChange={(e) => updateContact("email", e.target.value)}
+                placeholder="your@email.com"
+              />
             </div>
             <div>
-              <label className="font-medium">Phone</label>
-              <Input value={contact.phone} onChange={(e) => updateContact("phone", e.target.value)} placeholder="+1 (555) 123-4567" />
+              <label className="font-medium mb-1 block">Phone</label>
+              <Input
+                data-focus-key="contact.phone"
+                value={contact.phone}
+                onChange={(e) => updateContact("phone", e.target.value)}
+                placeholder="+1 (555) 123-4567"
+              />
             </div>
             <div>
-              <label className="font-medium">Location</label>
-              <Input value={contact.location} onChange={(e) => updateContact("location", e.target.value)} placeholder="City, Country" />
+              <label className="font-medium mb-1 block">Location</label>
+              <Input
+                data-focus-key="contact.location"
+                value={contact.location}
+                onChange={(e) => updateContact("location", e.target.value)}
+                placeholder="City, Country"
+              />
             </div>
           </div>
         </CollapsibleSection>
