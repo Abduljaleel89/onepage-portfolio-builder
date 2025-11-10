@@ -69,6 +69,9 @@ const withFocusGuard = (callback) => {
           direction: activeElement.selectionDirection,
         }
       : null;
+  const previousScroll = typeof window !== "undefined"
+    ? { x: window.scrollX, y: window.scrollY }
+    : null;
 
   callback();
 
@@ -84,6 +87,9 @@ const withFocusGuard = (callback) => {
               target.setSelectionRange(start, end, direction || "none");
             }
           }
+          if (previousScroll) {
+            window.scrollTo({ left: previousScroll.x, top: previousScroll.y, behavior: "auto" });
+          }
           return;
         }
       }
@@ -94,6 +100,9 @@ const withFocusGuard = (callback) => {
         } else if (typeof activeElement.focus === "function") {
           activeElement.focus();
         }
+      }
+      if (previousScroll) {
+        window.scrollTo({ left: previousScroll.x, top: previousScroll.y, behavior: "auto" });
       }
     } catch (err) {
       console.warn("Failed to restore focus", err);
@@ -113,6 +122,7 @@ const formatTemplate = (template, replacements = {}) => {
 
 export default function Home() {
   const STORAGE_KEY = "portfolio-builder-data-v1";
+  const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   const [profile, setProfile] = useState({ name: "", headline: "", bio: "", avatar: "" });
   const [projects, setProjects] = useState([]);
   const [social, setSocial] = useState({ github: "", linkedin: "", twitter: "", website: "", email: "" });
@@ -612,7 +622,7 @@ export default function Home() {
     const skill = prompt("Enter skill name:");
     if (skill) {
       markInteracted();
-      withFocusGuard(() => setSkills([...skills, { id: Date.now(), name: skill, level: "intermediate" }]));
+      withFocusGuard(() => setSkills([...skills, { id: createId(), name: skill, level: "intermediate" }]));
     }
   };
   const removeSkill = (id) => {
@@ -700,7 +710,7 @@ export default function Home() {
       const newSkills = [];
       result.forEach(skill => {
         if (!skills.find(s => s.name.toLowerCase() === skill.toLowerCase())) {
-          newSkills.push({ id: Date.now() + Math.random(), name: skill, level: "intermediate" });
+          newSkills.push({ id: createId(), name: skill, level: "intermediate" });
         }
       });
       if (newSkills.length > 0) {
@@ -746,7 +756,7 @@ export default function Home() {
   const addProj = (e) => {
     if (e) e.preventDefault();
     markInteracted();
-    withFocusGuard(() => setProjects([...projects, { id: Date.now(), title: "", description: "", image: "", link: "", tags: [] }]));
+    withFocusGuard(() => setProjects([...projects, { id: createId(), title: "", description: "", image: "", link: "", tags: [] }]));
   };
   const removeProj = (id) => {
     markInteracted();
@@ -756,7 +766,7 @@ export default function Home() {
   const addExp = (e) => {
     if (e) e.preventDefault();
     markInteracted();
-    withFocusGuard(() => setExperience([...experience, { id: Date.now(), company: "", role: "", period: "", description: "" }]));
+    withFocusGuard(() => setExperience([...experience, { id: createId(), company: "", role: "", period: "", description: "" }]));
   };
   const removeExp = (id) => {
     markInteracted();
@@ -766,7 +776,7 @@ export default function Home() {
   const addEdu = (e) => {
     if (e) e.preventDefault();
     markInteracted();
-    withFocusGuard(() => setEducation([...education, { id: Date.now(), institution: "", degree: "", period: "", description: "" }]));
+    withFocusGuard(() => setEducation([...education, { id: createId(), institution: "", degree: "", period: "", description: "" }]));
   };
   const removeEdu = (id) => {
     markInteracted();
