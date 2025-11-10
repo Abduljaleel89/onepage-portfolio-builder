@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,8 +7,6 @@ import { useTheme } from "next-themes";
 import { SunIcon, MoonIcon } from "@radix-ui/react-icons";
 import { cn } from "@/lib/utils";
 import Logo from "@/components/logo";
-
-const STORAGE_KEY = "portfolio-builder-data-v1";
 
 const mergeObjects = (prev = {}, next = {}, respectExisting = false) => {
   if (!next || typeof next !== "object" || Array.isArray(next)) {
@@ -55,14 +53,8 @@ const mergeArrays = (prev = [], next = [], respectExisting = false) => {
   return next;
 };
 
-const restoreScrollPosition = (scrollY) => {
-  if (typeof window === "undefined" || scrollY == null) return;
-  requestAnimationFrame(() => {
-    window.scrollTo({ top: scrollY, behavior: "auto" });
-  });
-};
-
 export default function Home() {
+  const STORAGE_KEY = "portfolio-builder-data-v1";
   const [profile, setProfile] = useState({ name: "", headline: "", bio: "", avatar: "" });
   const [projects, setProjects] = useState([]);
   const [social, setSocial] = useState({ github: "", linkedin: "", twitter: "", website: "", email: "" });
@@ -75,7 +67,6 @@ export default function Home() {
   const [responsibilities, setResponsibilities] = useState([]);
   const [occupations, setOccupations] = useState([]);
   const [showProjects, setShowProjects] = useState(true);
-  const [showPreview, setShowPreview] = useState(true);
   const [showSocial, setShowSocial] = useState(true);
   const [showSkills, setShowSkills] = useState(true);
   const [showExperience, setShowExperience] = useState(true);
@@ -89,6 +80,7 @@ export default function Home() {
   const fileInputRef = useRef(null);
   const hasMountedRef = useRef(false);
   const hasUserInteractedRef = useRef(false);
+  const persistTimeoutRef = useRef(null);
   const { theme, setTheme } = useTheme();
   const resolvedTheme = theme === "system" ? undefined : theme;
 
@@ -103,7 +95,6 @@ export default function Home() {
 
     const { overwrite = false } = options;
     const respectExisting = !overwrite;
-    const previousScrollY = typeof window !== "undefined" ? window.scrollY : null;
 
     if (data.profile) {
       setProfile((prev) => mergeObjects(prev, data.profile, respectExisting));
@@ -143,8 +134,6 @@ export default function Home() {
         return prev === nextValue ? prev : nextValue;
       });
     }
-
-    restoreScrollPosition(previousScrollY);
   };
 
   const buildSnapshot = (overrides = {}) => ({
@@ -169,7 +158,7 @@ export default function Home() {
     }
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (typeof window === "undefined") return;
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -187,7 +176,18 @@ export default function Home() {
       hasMountedRef.current = true;
       return;
     }
-    persistLocally(buildSnapshot());
+    if (persistTimeoutRef.current) {
+      clearTimeout(persistTimeoutRef.current);
+    }
+    persistTimeoutRef.current = setTimeout(() => {
+      persistLocally(buildSnapshot());
+    }, 200);
+
+    return () => {
+      if (persistTimeoutRef.current) {
+        clearTimeout(persistTimeoutRef.current);
+      }
+    };
   }, [
     profile,
     projects,
@@ -202,27 +202,12 @@ export default function Home() {
   ]);
 
   useEffect(() => {
-    // Load occupations
     fetch("/api/occupations")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (Array.isArray(data)) setOccupations(data);
       })
       .catch((err) => console.error("Failed to load occupations:", err));
-
-    // Load profile data
-    fetch("/api/me/profile")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d) {
-          applyData(d, { overwrite: !hasUserInteractedRef.current });
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to load profile:", err);
-        setStatus("Failed to load profile");
-        setTimeout(() => setStatus(""), 2000);
-      });
   }, []);
 
   const update = (k, v) => {
@@ -533,7 +518,7 @@ export default function Home() {
   };
 
   const CollapsibleSection = ({ title, isOpen, onToggle, children }) => (
-    <Card className="mb-6 premium-card animate-fade-in-up">
+    <Card className="mb-6 premium-card">
       <div
         className="flex justify-between items-center px-6 py-4 border-b cursor-pointer select-none hover:bg-accent/50 transition-all duration-300 hover:shadow-lg"
         onClick={onToggle}
@@ -803,7 +788,7 @@ export default function Home() {
       </div>
 
       <main id="content" className="max-w-4xl mx-auto mt-12 px-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 animate-fade-in-up">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Your Portfolio Setup
           </h2>
@@ -832,7 +817,7 @@ export default function Home() {
         </div>
 
         {/* Profile Card */}
-        <Card className="mb-6 premium-card animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+        <Card className="mb-6 premium-card">
           <CardContent className="space-y-4 pt-6">
             <div>
               <div className="font-medium mb-2 block">Profile Photo</div>
