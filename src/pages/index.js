@@ -34,22 +34,71 @@ export default function Home() {
   const [aiLoading, setAiLoading] = useState({});
   const fileInputRef = useRef(null);
   const hasMountedRef = useRef(false);
+  const hasUserInteractedRef = useRef(false);
   const { theme, setTheme } = useTheme();
   const resolvedTheme = theme === "system" ? undefined : theme;
   const STORAGE_KEY = "portfolio-builder-data-v1";
 
-  const applyData = (data = {}) => {
+  const markInteracted = () => {
+    if (!hasUserInteractedRef.current) {
+      hasUserInteractedRef.current = true;
+    }
+  };
+
+  const mergeObjects = (prev = {}, next = {}, respectExisting = false) => {
+    if (!next || typeof next !== "object") return prev || {};
+    const merged = { ...(prev || {}) };
+    Object.entries(next).forEach(([key, value]) => {
+      if (!respectExisting || merged[key] === undefined || merged[key] === null || merged[key] === "") {
+        merged[key] = value;
+      }
+    });
+    return merged;
+  };
+
+  const mergeArrays = (prev = [], next = [], respectExisting = false) => {
+    if (!Array.isArray(next)) return prev || [];
+    if (respectExisting && Array.isArray(prev) && prev.length) {
+      return prev;
+    }
+    return next;
+  };
+
+  const applyData = (data = {}, options = {}) => {
     if (!data || typeof data !== "object") return;
-    if (data.profile) setProfile(data.profile || {});
-    if (data.projects) setProjects(data.projects || []);
-    if (data.social) setSocial(data.social || {});
-    if (data.skills) setSkills(data.skills || []);
-    if (data.experience) setExperience(data.experience || []);
-    if (data.education) setEducation(data.education || []);
-    if (data.contact) setContact(data.contact || {});
-    if (typeof data.profession === "string") setProfession(data.profession);
-    if (typeof data.customProfession === "string") setCustomProfession(data.customProfession);
-    if (Array.isArray(data.responsibilities)) setResponsibilities(data.responsibilities);
+    const { overwrite = false } = options;
+    const respectExisting = !overwrite;
+
+    if (data.profile) {
+      setProfile((prev) => mergeObjects(prev, data.profile, respectExisting));
+    }
+    if (data.social) {
+      setSocial((prev) => mergeObjects(prev, data.social, respectExisting));
+    }
+    if (data.contact) {
+      setContact((prev) => mergeObjects(prev, data.contact, respectExisting));
+    }
+    if (data.projects) {
+      setProjects((prev) => mergeArrays(prev, data.projects, respectExisting));
+    }
+    if (data.skills) {
+      setSkills((prev) => mergeArrays(prev, data.skills, respectExisting));
+    }
+    if (data.experience) {
+      setExperience((prev) => mergeArrays(prev, data.experience, respectExisting));
+    }
+    if (data.education) {
+      setEducation((prev) => mergeArrays(prev, data.education, respectExisting));
+    }
+    if (data.responsibilities) {
+      setResponsibilities((prev) => mergeArrays(prev, data.responsibilities, respectExisting));
+    }
+    if (typeof data.profession === "string") {
+      setProfession((prev) => (respectExisting && prev ? prev : data.profession || ""));
+    }
+    if (typeof data.customProfession === "string") {
+      setCustomProfession((prev) => (respectExisting && prev ? prev : data.customProfession || ""));
+    }
   };
 
   const buildSnapshot = (overrides = {}) => ({
@@ -80,7 +129,7 @@ export default function Home() {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        applyData(parsed);
+        applyData(parsed, { overwrite: true });
       }
     } catch (err) {
       console.error("Failed to load portfolio data from local storage:", err);
@@ -120,7 +169,7 @@ export default function Home() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d) {
-          applyData(d);
+          applyData(d, { overwrite: !hasUserInteractedRef.current });
         }
       })
       .catch((err) => {
@@ -130,27 +179,42 @@ export default function Home() {
       });
   }, []);
 
-  const update = (k, v) => setProfile((p) => ({ ...p, [k]: v }));
-  const updateSocial = (k, v) => setSocial((s) => ({ ...s, [k]: v }));
-  const updateContact = (k, v) => setContact((c) => ({ ...c, [k]: v }));
-  const updateProj = (i, k, v) =>
+  const update = (k, v) => {
+    markInteracted();
+    setProfile((p) => ({ ...p, [k]: v }));
+  };
+  const updateSocial = (k, v) => {
+    markInteracted();
+    setSocial((s) => ({ ...s, [k]: v }));
+  };
+  const updateContact = (k, v) => {
+    markInteracted();
+    setContact((c) => ({ ...c, [k]: v }));
+  };
+  const updateProj = (i, k, v) => {
+    markInteracted();
     setProjects((p) => {
       const copy = [...p];
       copy[i] = { ...copy[i], [k]: v };
       return copy;
     });
-  const updateExp = (i, k, v) =>
+  };
+  const updateExp = (i, k, v) => {
+    markInteracted();
     setExperience((e) => {
       const copy = [...e];
       copy[i] = { ...copy[i], [k]: v };
       return copy;
     });
-  const updateEdu = (i, k, v) =>
+  };
+  const updateEdu = (i, k, v) => {
+    markInteracted();
     setEducation((e) => {
       const copy = [...e];
       copy[i] = { ...copy[i], [k]: v };
       return copy;
     });
+  };
 
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -184,6 +248,7 @@ export default function Home() {
       });
 
       const nextProfile = { ...profile, avatar: dataUrl };
+      markInteracted();
       setProfile(nextProfile);
       persistLocally(buildSnapshot({ profile: nextProfile }));
       setStatus("Photo updated");
@@ -200,9 +265,15 @@ export default function Home() {
   const addSkill = (e) => {
     if (e) e.preventDefault();
     const skill = prompt("Enter skill name:");
-    if (skill) setSkills([...skills, { id: Date.now(), name: skill, level: "intermediate" }]);
+    if (skill) {
+      markInteracted();
+      setSkills([...skills, { id: Date.now(), name: skill, level: "intermediate" }]);
+    }
   };
-  const removeSkill = (id) => setSkills(skills.filter((s) => s.id !== id));
+  const removeSkill = (id) => {
+    markInteracted();
+    setSkills(skills.filter((s) => s.id !== id));
+  };
 
   // AI Generation Functions
   const generateWithAI = async (type, input, context = {}, skipLoading = false) => {
@@ -280,6 +351,7 @@ export default function Home() {
       profession: profession || customProfession,
     }, { professionData: selectedProfession });
     if (result && Array.isArray(result)) {
+      markInteracted();
       const newSkills = [];
       result.forEach(skill => {
         if (!skills.find(s => s.name.toLowerCase() === skill.toLowerCase())) {
@@ -303,6 +375,7 @@ export default function Home() {
       profession: profession || customProfession,
     }, { professionData: selectedProfession });
     if (result && Array.isArray(result)) {
+      markInteracted();
       setResponsibilities(result);
       setStatus(`Generated ${result.length} responsibilities ✓`);
       setTimeout(() => setStatus(""), 2000);
@@ -310,6 +383,7 @@ export default function Home() {
   };
 
   const removeResponsibility = (index) => {
+    markInteracted();
     setResponsibilities(responsibilities.filter((_, i) => i !== index));
   };
 
@@ -326,23 +400,36 @@ export default function Home() {
 
   const addProj = (e) => {
     if (e) e.preventDefault();
+    markInteracted();
     setProjects([...projects, { id: Date.now(), title: "", description: "", image: "", link: "", tags: [] }]);
   };
-  const removeProj = (id) => setProjects(projects.filter((p) => p.id !== id));
+  const removeProj = (id) => {
+    markInteracted();
+    setProjects(projects.filter((p) => p.id !== id));
+  };
 
   const addExp = (e) => {
     if (e) e.preventDefault();
+    markInteracted();
     setExperience([...experience, { id: Date.now(), company: "", role: "", period: "", description: "" }]);
   };
-  const removeExp = (id) => setExperience(experience.filter((e) => e.id !== id));
+  const removeExp = (id) => {
+    markInteracted();
+    setExperience(experience.filter((e) => e.id !== id));
+  };
 
   const addEdu = (e) => {
     if (e) e.preventDefault();
+    markInteracted();
     setEducation([...education, { id: Date.now(), institution: "", degree: "", period: "", description: "" }]);
   };
-  const removeEdu = (id) => setEducation(education.filter((e) => e.id !== id));
+  const removeEdu = (id) => {
+    markInteracted();
+    setEducation(education.filter((e) => e.id !== id));
+  };
 
   const resetAll = async () => {
+    hasUserInteractedRef.current = false;
     setProfile({ name: "", headline: "", bio: "", avatar: "" });
     setProjects([]);
     setSocial({ github: "", linkedin: "", twitter: "", website: "", email: "" });
@@ -752,8 +839,10 @@ export default function Home() {
               <select
                 value={profession}
                 onChange={(e) => {
-                  setProfession(e.target.value);
-                  if (e.target.value) setCustomProfession(""); // Clear custom when selecting from list
+                  markInteracted();
+                  const value = e.target.value;
+                  setProfession(value);
+                  if (value) setCustomProfession("");
                 }}
                 className="flex h-9 w-full rounded-md border border-input bg-background text-foreground px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                 style={{ 
@@ -784,8 +873,10 @@ export default function Home() {
                 <Input 
                   value={customProfession}
                   onChange={(e) => {
-                    setCustomProfession(e.target.value);
-                    if (e.target.value) setProfession(""); // Clear dropdown when typing custom
+                    markInteracted();
+                    const value = e.target.value;
+                    setCustomProfession(value);
+                    if (value) setProfession(""); // Clear dropdown when typing custom
                   }}
                   placeholder="e.g., Senior Product Designer"
                   className="mt-1"
@@ -872,6 +963,7 @@ export default function Home() {
                 <Textarea
                   value={resp}
                   onChange={(e) => {
+                    markInteracted();
                     const copy = [...responsibilities];
                     copy[i] = e.target.value;
                     setResponsibilities(copy);
@@ -885,7 +977,10 @@ export default function Home() {
             ))}
             <div className="flex gap-2">
               <Button
-                onClick={() => setResponsibilities([...responsibilities, ""])}
+                onClick={() => {
+                  markInteracted();
+                  setResponsibilities([...responsibilities, ""]);
+                }}
                 variant="outline"
               >
                 + Add Responsibility
@@ -912,6 +1007,7 @@ export default function Home() {
             {skills.map((s) => (
               <div key={s.id} className="flex items-center gap-2">
                 <Input value={s.name} onChange={(e) => {
+                  markInteracted();
                   const copy = [...skills];
                   copy[copy.findIndex(sk => sk.id === s.id)].name = e.target.value;
                   setSkills(copy);
