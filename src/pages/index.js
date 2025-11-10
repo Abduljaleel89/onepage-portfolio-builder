@@ -53,6 +53,36 @@ const mergeArrays = (prev = [], next = [], respectExisting = false) => {
   return next;
 };
 
+const withFocusGuard = (callback) => {
+  if (typeof document === "undefined") {
+    callback();
+    return;
+  }
+  const activeElement = document.activeElement;
+  callback();
+  if (activeElement && activeElement instanceof HTMLElement) {
+    requestAnimationFrame(() => {
+      try {
+        if (document.contains(activeElement)) {
+          activeElement.focus({ preventScroll: true });
+        }
+      } catch (err) {
+        activeElement.focus();
+      }
+    });
+  }
+};
+
+const formatTemplate = (template, replacements = {}) => {
+  if (!template) return "";
+  let output = template;
+  Object.entries(replacements).forEach(([key, value]) => {
+    const safeValue = value == null ? "" : String(value);
+    output = output.replace(new RegExp(`\\{${key}\\}`, "gi"), safeValue);
+  });
+  return output.replace(/\{[^}]+\}/g, "");
+};
+
 export default function Home() {
   const STORAGE_KEY = "portfolio-builder-data-v1";
   const [profile, setProfile] = useState({ name: "", headline: "", bio: "", avatar: "" });
@@ -97,41 +127,45 @@ export default function Home() {
     const respectExisting = !overwrite;
 
     if (data.profile) {
-      setProfile((prev) => mergeObjects(prev, data.profile, respectExisting));
+      withFocusGuard(() => setProfile((prev) => mergeObjects(prev, data.profile, respectExisting)));
     }
     if (data.social) {
-      setSocial((prev) => mergeObjects(prev, data.social, respectExisting));
+      withFocusGuard(() => setSocial((prev) => mergeObjects(prev, data.social, respectExisting)));
     }
     if (data.contact) {
-      setContact((prev) => mergeObjects(prev, data.contact, respectExisting));
+      withFocusGuard(() => setContact((prev) => mergeObjects(prev, data.contact, respectExisting)));
     }
     if (data.projects) {
-      setProjects((prev) => mergeArrays(prev, data.projects, respectExisting));
+      withFocusGuard(() => setProjects((prev) => mergeArrays(prev, data.projects, respectExisting)));
     }
     if (data.skills) {
-      setSkills((prev) => mergeArrays(prev, data.skills, respectExisting));
+      withFocusGuard(() => setSkills((prev) => mergeArrays(prev, data.skills, respectExisting)));
     }
     if (data.experience) {
-      setExperience((prev) => mergeArrays(prev, data.experience, respectExisting));
+      withFocusGuard(() => setExperience((prev) => mergeArrays(prev, data.experience, respectExisting)));
     }
     if (data.education) {
-      setEducation((prev) => mergeArrays(prev, data.education, respectExisting));
+      withFocusGuard(() => setEducation((prev) => mergeArrays(prev, data.education, respectExisting)));
     }
     if (data.responsibilities) {
-      setResponsibilities((prev) => mergeArrays(prev, data.responsibilities, respectExisting));
+      withFocusGuard(() => setResponsibilities((prev) => mergeArrays(prev, data.responsibilities, respectExisting)));
     }
     if (typeof data.profession === "string") {
-      setProfession((prev) => {
-        if (respectExisting && prev) return prev;
-        const nextValue = data.profession || "";
-        return prev === nextValue ? prev : nextValue;
+      withFocusGuard(() => {
+        setProfession((prev) => {
+          if (respectExisting && prev) return prev;
+          const nextValue = data.profession || "";
+          return prev === nextValue ? prev : nextValue;
+        });
       });
     }
     if (typeof data.customProfession === "string") {
-      setCustomProfession((prev) => {
-        if (respectExisting && prev) return prev;
-        const nextValue = data.customProfession || "";
-        return prev === nextValue ? prev : nextValue;
+      withFocusGuard(() => {
+        setCustomProfession((prev) => {
+          if (respectExisting && prev) return prev;
+          const nextValue = data.customProfession || "";
+          return prev === nextValue ? prev : nextValue;
+        });
       });
     }
   };
@@ -210,41 +244,291 @@ export default function Home() {
       .catch((err) => console.error("Failed to load occupations:", err));
   }, []);
 
+  const selectedProfession = occupations.find((occ) => occ.slug === profession);
+  const professionTitle = (customProfession && customProfession.trim()) || selectedProfession?.title || profession || "Professional";
+  const safeName = profile.name && profile.name.trim() ? profile.name.trim() : "Your Name";
+  const safeHeadline = profile.headline && profile.headline.trim() ? profile.headline.trim() : `${professionTitle} | Building Innovative Solutions`;
+  const experienceSummary = experience.length ? `${experience.length} ${experience.length === 1 ? "year" : "years"}` : "";
+  const skillNames = skills.map((s) => (s?.name || "").trim()).filter(Boolean);
+  const skillSummary = skillNames.length ? skillNames.join(", ") : "various technologies";
+  const formattedBio = formatTemplate(profile.bio, {
+    title: professionTitle,
+    skills: skillSummary,
+    name: safeName,
+    headline: safeHeadline,
+    experience: experienceSummary,
+  }).trim();
+  const displayBio = formattedBio || `I am ${safeName} specializing in ${professionTitle}. My expertise includes ${skillSummary}.`;
+  const socialLinks = [
+    { label: "GitHub", value: social.github },
+    { label: "LinkedIn", value: social.linkedin },
+    { label: "Twitter", value: social.twitter },
+    { label: "Website", value: social.website },
+  ]
+    .map((link) => ({ ...link, value: link.value?.trim() }))
+    .filter((link) => !!link.value);
+
+  const contactEntries = [
+    { label: "Email", value: contact.email?.trim() },
+    { label: "Phone", value: contact.phone?.trim() },
+    { label: "Location", value: contact.location?.trim() },
+  ].filter((item) => !!item.value);
+
+  const responsibilitiesToShow = responsibilities.filter((item) => item && item.trim());
+  const projectsToShow = projects.filter((project) => project.title || project.description);
+  const experienceToShow = experience.filter((item) => item.role || item.company || item.description);
+  const educationToShow = education.filter((item) => item.degree || item.institution || item.description);
+
+  if (previewMode) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 print:bg-white animate-fade-in">
+          {/* Header - Hidden on Print */}
+          <div className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b no-print glass-effect shadow-lg">
+            <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <Logo size={32} />
+                <h2 className="font-bold text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Professional CV Preview</h2>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="premium-button cinematic-glow-hover"
+                  onClick={() => window.print()}
+                >
+                  🖨️ Print / Save as PDF
+                </Button>
+                <Button 
+                  className="premium-button cinematic-glow"
+                  onClick={() => setPreviewMode(false)}
+                >
+                  Edit Portfolio
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* CV Container */}
+          <div className="max-w-4xl mx-auto bg-white shadow-2xl print:shadow-none my-8 print:my-0 rounded-lg overflow-hidden animate-fade-in-up cinematic-glow">
+            <div className="p-8 print:p-6">
+              {/* CV Header */}
+              <div className="border-b-2 border-primary pb-6 mb-6 bg-gradient-to-r from-blue-50/50 to-purple-50/50 -mx-8 px-8 py-6 print:bg-transparent">
+                <div className="flex items-start justify-between gap-6">
+                  <div className="flex-1 animate-slide-in-right">
+                    <h1 className="text-4xl font-bold mb-2 text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{safeName}</h1>
+                    <p className="text-xl text-gray-600 mb-3 font-medium">{safeHeadline}</p>
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                      {contactEntries.map((entry) => (
+                        <span key={entry.label}>{entry.label}: {entry.value}</span>
+                      ))}
+                    </div>
+                    {socialLinks.length > 0 && (
+                      <div className="flex flex-wrap gap-3 mt-3">
+                        {socialLinks.map((link) => (
+                          <a key={link.label} href={link.value.startsWith("http") ? link.value : `https://${link.value}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">
+                            {link.label}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {profile.avatar && (
+                    <img
+                      src={profile.avatar}
+                      alt={profile.name}
+                      className="w-24 h-24 rounded-full object-cover border-2 border-primary print:w-20 print:h-20"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Professional Summary */}
+              {displayBio && (
+                <section className="mb-6 cv-section animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                  <h2 className="text-xl font-bold mb-3 text-gray-900 border-b-2 border-primary pb-2 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
+                    Professional Summary
+                  </h2>
+                  <p className="text-gray-700 leading-relaxed">{displayBio}</p>
+                </section>
+              )}
+
+              {/* Job Responsibilities */}
+              {responsibilitiesToShow.length > 0 && (
+                <section className="mb-6 cv-section animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                  <h2 className="text-xl font-bold mb-3 text-gray-900 border-b-2 border-primary pb-2 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
+                    Key Responsibilities
+                  </h2>
+                  <ul className="list-disc list-inside space-y-1 text-gray-700">
+                    {responsibilitiesToShow.map((resp, i) => (
+                      <li key={i} className="leading-relaxed">{resp}</li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {/* Skills */}
+              {skillNames.length > 0 && (
+                <section className="mb-6 cv-section animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+                  <h2 className="text-xl font-bold mb-3 text-gray-900 border-b-2 border-primary pb-2 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
+                    Technical Skills
+                  </h2>
+                  <div className="flex flex-wrap gap-2">
+                    {skillNames.map((name) => (
+                      <span key={name} className="px-3 py-1 bg-gradient-to-r from-blue-50 to-purple-50 text-gray-800 rounded-md text-sm border border-blue-200 font-medium">
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Experience */}
+              {experienceToShow.length > 0 && (
+                <section className="mb-6 cv-section animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+                  <h2 className="text-xl font-bold mb-4 text-gray-900 border-b-2 border-primary pb-2 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
+                    Professional Experience
+                  </h2>
+                  <div className="space-y-5">
+                    {experienceToShow.map((exp) => (
+                      <div key={exp.id} className="border-l-2 border-primary pl-4">
+                        <div className="flex justify-between items-start mb-1">
+                          <h3 className="font-semibold text-lg text-gray-900">{exp.role || "Role"}</h3>
+                          <span className="text-sm text-gray-600 font-medium">{exp.period || experienceSummary || "Timeline"}</span>
+                        </div>
+                        <p className="text-gray-700 font-medium mb-2">{exp.company || professionTitle}</p>
+                        {exp.description && (
+                          <p className="text-gray-700 leading-relaxed">{exp.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Education */}
+              {educationToShow.length > 0 && (
+                <section className="mb-6 cv-section animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
+                  <h2 className="text-xl font-bold mb-4 text-gray-900 border-b-2 border-primary pb-2 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
+                    Education
+                  </h2>
+                  <div className="space-y-4">
+                    {educationToShow.map((edu) => (
+                      <div key={edu.id} className="border-l-2 border-primary pl-4">
+                        <div className="flex justify-between items-start mb-1">
+                          <h3 className="font-semibold text-lg text-gray-900">{edu.degree || "Degree"}</h3>
+                          <span className="text-sm text-gray-600 font-medium">{edu.period || "Timeline"}</span>
+                        </div>
+                        <p className="text-gray-700 font-medium mb-1">{edu.institution || professionTitle}</p>
+                        {edu.description && (
+                          <p className="text-gray-700 text-sm leading-relaxed">{edu.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Projects */}
+              {projectsToShow.length > 0 && (
+                <section className="mb-6 cv-section animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
+                  <h2 className="text-xl font-bold mb-4 text-gray-900 border-b-2 border-primary pb-2 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
+                    Projects
+                  </h2>
+                  <div className="space-y-4">
+                    {projectsToShow.map((p) => (
+                      <div key={p.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50 print:bg-white">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-semibold text-lg text-gray-900">{p.title || "Project Title"}</h3>
+                          {p.link && (
+                            <a href={p.link.startsWith("http") ? p.link : `https://${p.link}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm print:text-gray-900">
+                              View →
+                            </a>
+                          )}
+                        </div>
+                        {p.description && (
+                          <p className="text-gray-700 text-sm mb-2 leading-relaxed">{p.description}</p>
+                        )}
+                        {Array.isArray(p.tags) && p.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {p.tags.map((tag) => (
+                              <span key={tag} className="px-2 py-0.5 bg-gray-200 text-gray-700 rounded text-xs">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Contact */}
+              {contactEntries.length > 0 && (
+                <section className="mb-6 cv-section animate-fade-in-up" style={{ animationDelay: '0.7s' }}>
+                  <h2 className="text-xl font-bold mb-3 text-gray-900 border-b-2 border-primary pb-2 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
+                    Contact Information
+                  </h2>
+                  <ul className="space-y-1 text-gray-700">
+                    {contactEntries.map((entry) => (
+                      <li key={entry.label}><strong>{entry.label}:</strong> {entry.value}</li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </div>
+          </div>
+        </div>
+    );
+  }
+
   const update = (k, v) => {
     markInteracted();
-    setProfile((p) => ({ ...p, [k]: v }));
+    withFocusGuard(() => setProfile((p) => ({ ...p, [k]: v })));
   };
   const updateSocial = (k, v) => {
     markInteracted();
-    setSocial((s) => ({ ...s, [k]: v }));
+    withFocusGuard(() => setSocial((s) => ({ ...s, [k]: v })));
   };
   const updateContact = (k, v) => {
     markInteracted();
-    setContact((c) => ({ ...c, [k]: v }));
+    withFocusGuard(() => setContact((c) => ({ ...c, [k]: v })));
   };
   const updateProj = (i, k, v) => {
     markInteracted();
-    setProjects((p) => {
-      const copy = [...p];
-      copy[i] = { ...copy[i], [k]: v };
-      return copy;
-    });
+    withFocusGuard(() =>
+      setProjects((p) => {
+        const copy = [...p];
+        copy[i] = { ...copy[i], [k]: v };
+        return copy;
+      })
+    );
   };
   const updateExp = (i, k, v) => {
     markInteracted();
-    setExperience((e) => {
-      const copy = [...e];
-      copy[i] = { ...copy[i], [k]: v };
-      return copy;
-    });
+    withFocusGuard(() =>
+      setExperience((e) => {
+        const copy = [...e];
+        copy[i] = { ...copy[i], [k]: v };
+        return copy;
+      })
+    );
   };
   const updateEdu = (i, k, v) => {
     markInteracted();
-    setEducation((e) => {
-      const copy = [...e];
-      copy[i] = { ...copy[i], [k]: v };
-      return copy;
-    });
+    withFocusGuard(() =>
+      setEducation((e) => {
+        const copy = [...e];
+        copy[i] = { ...copy[i], [k]: v };
+        return copy;
+      })
+    );
   };
 
   const handleAvatarUpload = async (e) => {
@@ -280,7 +564,7 @@ export default function Home() {
 
       const nextProfile = { ...profile, avatar: dataUrl };
       markInteracted();
-      setProfile(nextProfile);
+      withFocusGuard(() => setProfile(nextProfile));
       persistLocally(buildSnapshot({ profile: nextProfile }));
       setStatus("Photo updated");
     } catch (err) {
@@ -298,12 +582,12 @@ export default function Home() {
     const skill = prompt("Enter skill name:");
     if (skill) {
       markInteracted();
-      setSkills([...skills, { id: Date.now(), name: skill, level: "intermediate" }]);
+      withFocusGuard(() => setSkills([...skills, { id: Date.now(), name: skill, level: "intermediate" }]));
     }
   };
   const removeSkill = (id) => {
     markInteracted();
-    setSkills(skills.filter((s) => s.id !== id));
+    withFocusGuard(() => setSkills(skills.filter((s) => s.id !== id)));
   };
 
   // AI Generation Functions
@@ -390,7 +674,7 @@ export default function Home() {
         }
       });
       if (newSkills.length > 0) {
-        setSkills([...skills, ...newSkills]);
+        withFocusGuard(() => setSkills([...skills, ...newSkills]));
         setStatus(`Added ${newSkills.length} skills ✓`);
         setTimeout(() => setStatus(""), 2000);
       } else {
@@ -407,7 +691,7 @@ export default function Home() {
     }, { professionData: selectedProfession });
     if (result && Array.isArray(result)) {
       markInteracted();
-      setResponsibilities(result);
+      withFocusGuard(() => setResponsibilities(result));
       setStatus(`Generated ${result.length} responsibilities ✓`);
       setTimeout(() => setStatus(""), 2000);
     }
@@ -415,7 +699,7 @@ export default function Home() {
 
   const removeResponsibility = (index) => {
     markInteracted();
-    setResponsibilities(responsibilities.filter((_, i) => i !== index));
+    withFocusGuard(() => setResponsibilities(responsibilities.filter((_, i) => i !== index)));
   };
 
   const handleAIOptimize = async (type, content, index = null) => {
@@ -432,31 +716,31 @@ export default function Home() {
   const addProj = (e) => {
     if (e) e.preventDefault();
     markInteracted();
-    setProjects([...projects, { id: Date.now(), title: "", description: "", image: "", link: "", tags: [] }]);
+    withFocusGuard(() => setProjects([...projects, { id: Date.now(), title: "", description: "", image: "", link: "", tags: [] }]));
   };
   const removeProj = (id) => {
     markInteracted();
-    setProjects(projects.filter((p) => p.id !== id));
+    withFocusGuard(() => setProjects(projects.filter((p) => p.id !== id)));
   };
 
   const addExp = (e) => {
     if (e) e.preventDefault();
     markInteracted();
-    setExperience([...experience, { id: Date.now(), company: "", role: "", period: "", description: "" }]);
+    withFocusGuard(() => setExperience([...experience, { id: Date.now(), company: "", role: "", period: "", description: "" }]));
   };
   const removeExp = (id) => {
     markInteracted();
-    setExperience(experience.filter((e) => e.id !== id));
+    withFocusGuard(() => setExperience(experience.filter((e) => e.id !== id)));
   };
 
   const addEdu = (e) => {
     if (e) e.preventDefault();
     markInteracted();
-    setEducation([...education, { id: Date.now(), institution: "", degree: "", period: "", description: "" }]);
+    withFocusGuard(() => setEducation([...education, { id: Date.now(), institution: "", degree: "", period: "", description: "" }]));
   };
   const removeEdu = (id) => {
     markInteracted();
-    setEducation(education.filter((e) => e.id !== id));
+    withFocusGuard(() => setEducation(education.filter((e) => e.id !== id)));
   };
 
   const resetAll = async () => {
@@ -529,199 +813,6 @@ export default function Home() {
       {isOpen && <CardContent className="pt-4">{children}</CardContent>}
     </Card>
   );
-
-  if (previewMode) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 print:bg-white animate-fade-in">
-          {/* Header - Hidden on Print */}
-          <div className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b no-print glass-effect shadow-lg">
-            <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <Logo size={32} />
-                <h2 className="font-bold text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Professional CV Preview</h2>
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  className="premium-button cinematic-glow-hover"
-                  onClick={() => window.print()}
-                >
-                  🖨️ Print / Save as PDF
-                </Button>
-                <Button 
-                  className="premium-button cinematic-glow"
-                  onClick={() => setPreviewMode(false)}
-                >
-                  Edit Portfolio
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* CV Container */}
-          <div className="max-w-4xl mx-auto bg-white shadow-2xl print:shadow-none my-8 print:my-0 rounded-lg overflow-hidden animate-fade-in-up cinematic-glow">
-            <div className="p-8 print:p-6">
-              {/* CV Header */}
-              <div className="border-b-2 border-primary pb-6 mb-6 bg-gradient-to-r from-blue-50/50 to-purple-50/50 -mx-8 px-8 py-6 print:bg-transparent">
-                <div className="flex items-start justify-between gap-6">
-                  <div className="flex-1 animate-slide-in-right">
-                    <h1 className="text-4xl font-bold mb-2 text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{profile.name || "Your Name"}</h1>
-                    <p className="text-xl text-gray-600 mb-3 font-medium">{profile.headline || "Your Professional Headline"}</p>
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                      {contact.email && <span>📧 {contact.email}</span>}
-                      {contact.phone && <span>📱 {contact.phone}</span>}
-                      {contact.location && <span>📍 {contact.location}</span>}
-                    </div>
-                    {(social.github || social.linkedin || social.twitter || social.website) && (
-                      <div className="flex flex-wrap gap-3 mt-3">
-                        {social.github && <a href={social.github} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">GitHub</a>}
-                        {social.linkedin && <a href={social.linkedin} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">LinkedIn</a>}
-                        {social.twitter && <a href={social.twitter} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">Twitter</a>}
-                        {social.website && <a href={social.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">Website</a>}
-                      </div>
-                    )}
-                  </div>
-                  {profile.avatar && (
-                    <img
-                      src={profile.avatar}
-                      alt={profile.name}
-                      className="w-24 h-24 rounded-full object-cover border-2 border-primary print:w-20 print:h-20"
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Professional Summary */}
-              {profile.bio && (
-                <section className="mb-6 cv-section animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-                  <h2 className="text-xl font-bold mb-3 text-gray-900 border-b-2 border-primary pb-2 flex items-center gap-2">
-                    <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
-                    Professional Summary
-                  </h2>
-                  <p className="text-gray-700 leading-relaxed">{profile.bio}</p>
-                </section>
-              )}
-
-              {/* Job Responsibilities */}
-              {responsibilities.length > 0 && (
-                <section className="mb-6 cv-section animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-                  <h2 className="text-xl font-bold mb-3 text-gray-900 border-b-2 border-primary pb-2 flex items-center gap-2">
-                    <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
-                    Key Responsibilities
-                  </h2>
-                  <ul className="list-disc list-inside space-y-1 text-gray-700">
-                    {responsibilities.map((resp, i) => (
-                      <li key={i} className="leading-relaxed">{resp}</li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-
-              {/* Skills */}
-              {skills.length > 0 && (
-                <section className="mb-6 cv-section animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-                  <h2 className="text-xl font-bold mb-3 text-gray-900 border-b-2 border-primary pb-2 flex items-center gap-2">
-                    <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
-                    Technical Skills
-                  </h2>
-                  <div className="flex flex-wrap gap-2">
-                    {skills.map((s) => (
-                      <span key={s.id} className="px-3 py-1 bg-gradient-to-r from-blue-50 to-purple-50 text-gray-800 rounded-md text-sm border border-blue-200 font-medium">
-                        {s.name}
-                      </span>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Experience */}
-              {experience.length > 0 && (
-                <section className="mb-6 cv-section animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-                  <h2 className="text-xl font-bold mb-4 text-gray-900 border-b-2 border-primary pb-2 flex items-center gap-2">
-                    <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
-                    Professional Experience
-                  </h2>
-                  <div className="space-y-5">
-                    {experience.map((exp) => (
-                      <div key={exp.id} className="border-l-2 border-primary pl-4">
-                        <div className="flex justify-between items-start mb-1">
-                          <h3 className="font-semibold text-lg text-gray-900">{exp.role || "Role"}</h3>
-                          <span className="text-sm text-gray-600 font-medium">{exp.period || "Period"}</span>
-                        </div>
-                        <p className="text-gray-700 font-medium mb-2">{exp.company || "Company"}</p>
-                        {exp.description && (
-                          <p className="text-gray-700 leading-relaxed">{exp.description}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Education */}
-              {education.length > 0 && (
-                <section className="mb-6 cv-section animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
-                  <h2 className="text-xl font-bold mb-4 text-gray-900 border-b-2 border-primary pb-2 flex items-center gap-2">
-                    <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
-                    Education
-                  </h2>
-                  <div className="space-y-4">
-                    {education.map((edu) => (
-                      <div key={edu.id} className="border-l-2 border-primary pl-4">
-                        <div className="flex justify-between items-start mb-1">
-                          <h3 className="font-semibold text-lg text-gray-900">{edu.degree || "Degree"}</h3>
-                          <span className="text-sm text-gray-600 font-medium">{edu.period || "Period"}</span>
-                        </div>
-                        <p className="text-gray-700 font-medium mb-1">{edu.institution || "Institution"}</p>
-                        {edu.description && (
-                          <p className="text-gray-700 text-sm leading-relaxed">{edu.description}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Projects */}
-              {projects.length > 0 && (
-                <section className="mb-6 cv-section animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
-                  <h2 className="text-xl font-bold mb-4 text-gray-900 border-b-2 border-primary pb-2 flex items-center gap-2">
-                    <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
-                    Projects
-                  </h2>
-                  <div className="space-y-4">
-                    {projects.map((p) => (
-                      <div key={p.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50 print:bg-white">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-semibold text-lg text-gray-900">{p.title || "Project Title"}</h3>
-                          {p.link && (
-                            <a href={p.link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm print:text-gray-900">
-                              View →
-                            </a>
-                          )}
-                        </div>
-                        {p.description && (
-                          <p className="text-gray-700 text-sm mb-2 leading-relaxed">{p.description}</p>
-                        )}
-                        {p.tags && p.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {p.tags.map((tag, i) => (
-                              <span key={i} className="px-2 py-0.5 bg-gray-200 text-gray-700 rounded text-xs">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-            </div>
-          </div>
-        </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-500 pb-20 relative overflow-hidden">
@@ -997,7 +1088,7 @@ export default function Home() {
                     markInteracted();
                     const copy = [...responsibilities];
                     copy[i] = e.target.value;
-                    setResponsibilities(copy);
+                    withFocusGuard(() => setResponsibilities(copy));
                   }}
                   rows={2}
                   placeholder="Job responsibility..."
@@ -1010,7 +1101,7 @@ export default function Home() {
               <Button
                 onClick={() => {
                   markInteracted();
-                  setResponsibilities([...responsibilities, ""]);
+                  withFocusGuard(() => setResponsibilities([...responsibilities, ""]));
                 }}
                 variant="outline"
               >
