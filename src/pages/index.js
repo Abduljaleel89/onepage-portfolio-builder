@@ -856,7 +856,7 @@ export default function Home() {
     </Card>
   );
 
-  const handleDownloadPDF = async () => {
+  async function handleDownloadPDF() {
     try {
       setDownloadingPdf(true);
       const element = document.querySelector('.cv-container');
@@ -914,7 +914,7 @@ export default function Home() {
     } finally {
       setDownloadingPdf(false);
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-500 pb-20 relative overflow-hidden">
