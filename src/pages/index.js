@@ -913,13 +913,15 @@ export default function Home() {
       }
 
       const fileName = `${(profile.name || customProfession || professionTitle).replace(/\s+/g, "-") || "portfolio"}-cv.pdf`;
-      pdf.save(fileName);
+      await pdf.save(fileName, { returnPromise: true });
       setStatus("PDF downloaded");
     } catch (err) {
       console.error("Failed to download PDF", err);
       setStatus("Failed to generate PDF");
     } finally {
-      element.classList.remove("pdf-capture");
+      if (element && element.classList) {
+        element.classList.remove("pdf-capture");
+      }
       setDownloadingPdf(false);
     }
   }
