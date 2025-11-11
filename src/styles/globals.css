@@ -321,47 +321,6 @@ input:focus, textarea:focus, select:focus {
   pointer-events: none;
 }
 
-.pdf-capture-body {
-  background: #ffffff !important;
-  color: #0f172a !important;
-}
-
-.pdf-capture-body .cv-container {
-  box-shadow: none !important;
-}
-
-.cv-container.pdf-capture::before,
-.cv-container.pdf-capture::after {
-  display: none !important;
-}
-
-.cv-container.pdf-capture {
-  background: #ffffff !important;
-  color: #0f172a !important;
-  box-shadow: none !important;
-  border: 1px solid #e2e8f0 !important;
-  filter: none !important;
-}
-
-.cv-container.pdf-capture * {
-  opacity: 1 !important;
-  filter: none !important;
-  mix-blend-mode: normal !important;
-  color: inherit !important;
-}
-
-.cv-container.pdf-capture .cv-name {
-  color: #1f2937 !important;
-  -webkit-text-fill-color: #1f2937 !important;
-}
-
-.cv-container.pdf-capture .cv-section h2,
-.cv-container.pdf-capture .cv-header-meta span,
-.cv-container.pdf-capture .cv-chip,
-.cv-container.pdf-capture .cv-header-links a {
-  color: #1f2937 !important;
-}
-
 .cv-name {
   display: inline-block;
   background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);

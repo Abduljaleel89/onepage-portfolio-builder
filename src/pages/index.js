@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { pdf } from "@react-pdf/renderer";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { useTheme } from "next-themes";
 import { SunIcon, MoonIcon } from "@radix-ui/react-icons";
 import { cn } from "@/lib/utils";
 import Logo from "@/components/logo";
+import PortfolioPdf from "@/components/PortfolioPdf";
 
 const mergeObjects = (prev = {}, next = {}, respectExisting = false) => {
   if (!next || typeof next !== "object" || Array.isArray(next)) {
@@ -857,54 +859,38 @@ export default function Home() {
   );
 
   async function handleDownloadPDF() {
-    let element;
     try {
       setDownloadingPdf(true);
-      element = document.querySelector('.cv-container');
-      if (!element) {
-        setStatus("Open preview before downloading.");
-        setDownloadingPdf(false);
-        return;
-      }
-
-      element.classList.add("pdf-capture");
-      document.body.classList.add("pdf-capture-body");
-
-      const { default: html2pdf } = await import("html2pdf.js");
-
       const fileName = `${(profile.name || customProfession || professionTitle).replace(/\s+/g, "-") || "portfolio"}-cv.pdf`;
-      const opt = {
-        margin: [10, 12],
-        filename: fileName,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: {
-          scale: Math.min(4, Math.max(2.5, (window.devicePixelRatio || 1) * 2)),
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          logging: false,
-          letterRendering: true,
-          scrollX: 0,
-          scrollY: -window.scrollY,
-        },
-        jsPDF: {
-          unit: "mm",
-          format: "a4",
-          orientation: "portrait",
-          compress: true,
-        },
-        pagebreak: { mode: ["avoid-all"] },
+
+      const pdfData = {
+        safeName,
+        safeHeadline,
+        professionTitle,
+        displayBio,
+        contactEntries,
+        socialLinks,
+        responsibilities: responsibilitiesToShow,
+        skills: skillNames,
+        experience: experienceToShow,
+        education: educationToShow,
+        projects: projectsToShow,
+        profile,
       };
 
-      await html2pdf().set(opt).from(element).save();
+      const blob = await pdf(<PortfolioPdf data={pdfData} />).toBlob();
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName;
+      anchor.click();
+      URL.revokeObjectURL(url);
       setStatus("PDF downloaded");
     } catch (err) {
       console.error("Failed to download PDF", err);
       setStatus("Failed to generate PDF");
     } finally {
-      if (element) {
-        element.classList.remove("pdf-capture");
-      }
-      document.body.classList.remove("pdf-capture-body");
       setDownloadingPdf(false);
     }
   }
