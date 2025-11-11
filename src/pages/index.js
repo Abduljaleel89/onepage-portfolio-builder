@@ -871,14 +871,17 @@ export default function Home() {
         import("jspdf"),
       ]);
 
+      const devicePixelRatio = window.devicePixelRatio || 1;
+      const renderScale = Math.min(4, Math.max(2, devicePixelRatio * 2));
+
       const canvas = await html2canvas(element, {
-        scale: window.devicePixelRatio < 2 ? 2 : window.devicePixelRatio,
+        scale: renderScale,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
       });
 
-      const imgData = canvas.toDataURL("image/png");
+      const imgData = canvas.toDataURL("image/png", 1.0);
       const pdf = new jsPDF("p", "pt", "a4");
       const margin = 36;
       const pageWidth = pdf.internal.pageSize.getWidth() - margin * 2;
