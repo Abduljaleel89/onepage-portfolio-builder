@@ -295,6 +295,8 @@ input:focus, textarea:focus, select:focus {
 
 /* CV Preview Styles */
 .cv-container {
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(135deg, rgba(248, 250, 252, 0.65), rgba(255, 255, 255, 0.95));
   border: 1px solid rgba(148, 163, 184, 0.2);
   box-shadow: 0 25px 70px rgba(15, 23, 42, 0.12), 0 10px 30px rgba(59, 130, 246, 0.08);
@@ -317,6 +319,15 @@ input:focus, textarea:focus, select:focus {
   border: 1px solid rgba(59, 130, 246, 0.12);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
   pointer-events: none;
+}
+
+.cv-name {
+  display: inline-block;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 .cv-section {
@@ -421,16 +432,19 @@ input:focus, textarea:focus, select:focus {
 }
 
 .cv-header-meta span {
-  padding: 0.25rem 0.75rem;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.25);
   border-radius: 9999px;
-  background: rgba(59, 130, 246, 0.08);
-  color: rgba(15, 23, 42, 0.8);
-  font-size: 0.85rem;
+  padding: 0.35rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .cv-header-links a {
   position: relative;
   padding-bottom: 0.15rem;
+  color: #1d4ed8;
 }
 
 .cv-header-links a::after {
@@ -482,26 +496,13 @@ button, input, textarea, select, a {
 
 /* Print Styles for CV */
 @media print {
-  .no-print {
-    display: none !important;
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-  
+
   body {
-    background: white !important;
-    color: black !important;
-  }
-  
-  .cv-section {
-    page-break-inside: avoid;
-  }
-  
-  a {
-    color: #000 !important;
-    text-decoration: none !important;
-  }
-  
-  .print-break {
-    page-break-after: always;
+    background: #fff !important;
   }
 
   .cv-container {
@@ -510,14 +511,30 @@ button, input, textarea, select, a {
     background: #fff;
   }
 
+  .cv-container::before,
+  .cv-container::after {
+    display: none !important;
+  }
+
+  .cv-name {
+    -webkit-text-fill-color: transparent !important;
+  }
+
+  .cv-header-meta span {
+    background: rgba(59, 130, 246, 0.12) !important;
+    border-color: rgba(59, 130, 246, 0.25) !important;
+    color: #0f172a !important;
+  }
+
   .cv-section::before {
     background: #1f2937;
+    box-shadow: none;
   }
 
   .cv-chip {
-    background: rgba(226, 232, 240, 0.8);
-    border-color: rgba(100, 116, 139, 0.4);
-    color: #111827;
+    background: linear-gradient(120deg, rgba(191, 219, 254, 0.9), rgba(165, 180, 252, 0.85)) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+    color: #14325b !important;
   }
 
   .premium-button,
@@ -529,5 +546,9 @@ button, input, textarea, select, a {
   .animate-gradient,
   .animate-float {
     animation: none !important;
+  }
+
+  .no-print {
+    display: none !important;
   }
 }

@@ -352,7 +352,7 @@ export default function Home() {
               <div className="border-b-2 border-primary pb-6 mb-6 bg-gradient-to-r from-blue-50/50 to-purple-50/50 -mx-8 px-8 py-6 print:bg-transparent">
                 <div className="flex items-start justify-between gap-6">
                   <div className="flex-1 animate-slide-in-right">
-                    <h1 className="text-4xl font-bold mb-2 text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent print:text-black print:bg-none print:bg-transparent">
+                    <h1 className="cv-name text-4xl font-bold mb-2">
                       {safeName}
                     </h1>
                     <p className="text-xl text-gray-600 mb-3 font-medium print:text-gray-900">{safeHeadline}</p>
