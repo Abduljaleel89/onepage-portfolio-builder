@@ -870,52 +870,32 @@ export default function Home() {
       element.classList.add("pdf-capture");
       document.body.classList.add("pdf-capture-body");
 
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import("html2canvas"),
-        import("jspdf"),
-      ]);
-
-      const devicePixelRatio = window.devicePixelRatio || 1;
-      const renderScale = Math.min(4, Math.max(2, devicePixelRatio * 2));
-
-      const canvas = await html2canvas(element, {
-        scale: renderScale,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
-      });
-
-      const imgData = canvas.toDataURL("image/png", 1.0);
-      const pdf = new jsPDF("p", "pt", "a4");
-      const margin = 36;
-      const pageWidth = pdf.internal.pageSize.getWidth() - margin * 2;
-      const pageHeight = pdf.internal.pageSize.getHeight() - margin * 2;
-
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
-      const ratio = pageWidth / canvasWidth;
-      const imgHeight = canvasHeight * ratio;
-
-      let heightLeft = imgHeight;
-      let position = margin;
-
-      pdf.addImage(imgData, "PNG", margin, position, pageWidth, imgHeight, undefined, "FAST");
-      heightLeft -= pageHeight;
-
-      while (heightLeft > -pageHeight) {
-        if (heightLeft <= 0) {
-          break;
-        }
-        pdf.addPage();
-        position = margin - heightLeft;
-        pdf.addImage(imgData, "PNG", margin, position, pageWidth, imgHeight, undefined, "FAST");
-        heightLeft -= pageHeight;
-      }
+      const { default: html2pdf } = await import("html2pdf.js");
 
       const fileName = `${(profile.name || customProfession || professionTitle).replace(/\s+/g, "-") || "portfolio"}-cv.pdf`;
-      await pdf.save(fileName, { returnPromise: true });
+      const opt = {
+        margin: [10, 12],
+        filename: fileName,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: {
+          scale: Math.min(4, Math.max(2.5, (window.devicePixelRatio || 1) * 2)),
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+          letterRendering: true,
+          scrollX: 0,
+          scrollY: -window.scrollY,
+        },
+        jsPDF: {
+          unit: "mm",
+          format: "a4",
+          orientation: "portrait",
+          compress: true,
+        },
+        pagebreak: { mode: ["avoid-all"] },
+      };
+
+      await html2pdf().set(opt).from(element).save();
       setStatus("PDF downloaded");
     } catch (err) {
       console.error("Failed to download PDF", err);
