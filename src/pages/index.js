@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect, useMemo } from "react";
 import { pdf } from "@react-pdf/renderer";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -79,8 +79,32 @@ const withFocusGuard = (callback) => {
 
   requestAnimationFrame(() => {
     try {
+      const currentActive = document.activeElement;
+      const requiresRestore =
+        !currentActive ||
+        currentActive === document.body ||
+        (focusKey && currentActive?.dataset?.focusKey !== focusKey);
+      const target =
+        focusKey && typeof document.querySelector === "function"
+          ? document.querySelector(`[data-focus-key="${focusKey}"]`)
+          : null;
+      if (!requiresRestore) {
+        if (
+          selection &&
+          focusKey &&
+          currentActive?.dataset?.focusKey === focusKey &&
+          "setSelectionRange" in currentActive
+        ) {
+          const { start, end, direction } = selection;
+          if (start != null && end != null) {
+            currentActive.setSelectionRange(start, end, direction || "none");
+          }
+        }
+        return;
+      }
+
+      let didRestore = false;
       if (focusKey) {
-        const target = document.querySelector(`[data-focus-key="${focusKey}"]`);
         if (target instanceof HTMLElement) {
           target.focus({ preventScroll: true });
           if (selection && "setSelectionRange" in target) {
@@ -89,21 +113,23 @@ const withFocusGuard = (callback) => {
               target.setSelectionRange(start, end, direction || "none");
             }
           }
-          if (previousScroll) {
-            window.scrollTo({ left: previousScroll.x, top: previousScroll.y, behavior: "auto" });
-          }
-          return;
+          didRestore = true;
+        } else if (activeElement instanceof HTMLElement && document.contains(activeElement)) {
+          activeElement.focus({ preventScroll: true });
+          didRestore = true;
         }
       }
 
-      if (activeElement instanceof HTMLElement) {
-        if (document.contains(activeElement)) {
-          activeElement.focus({ preventScroll: true });
-        } else if (typeof activeElement.focus === "function") {
-          activeElement.focus();
-        }
+      if (
+        !didRestore &&
+        activeElement instanceof HTMLElement &&
+        typeof activeElement.focus === "function"
+      ) {
+        activeElement.focus({ preventScroll: true });
+        didRestore = true;
       }
-      if (previousScroll) {
+
+      if (previousScroll && didRestore) {
         window.scrollTo({ left: previousScroll.x, top: previousScroll.y, behavior: "auto" });
       }
     } catch (err) {
@@ -134,6 +160,7 @@ export default function Home() {
   const [contact, setContact] = useState({ email: "", phone: "", location: "" });
   const [profession, setProfession] = useState("");
   const [customProfession, setCustomProfession] = useState("");
+  const [professionSearch, setProfessionSearch] = useState("");
   const [responsibilities, setResponsibilities] = useState([]);
   const [occupations, setOccupations] = useState([]);
   const [showProjects, setShowProjects] = useState(true);
@@ -319,6 +346,38 @@ export default function Home() {
   const projectsToShow = projects.filter((project) => project.title || project.description);
   const experienceToShow = experience.filter((item) => item.role || item.company || item.description);
   const educationToShow = education.filter((item) => item.degree || item.institution || item.description);
+  const filteredProfessions = useMemo(() => {
+    if (!Array.isArray(occupations)) return [];
+    const term = professionSearch.trim().toLowerCase();
+    if (!term) return occupations;
+    const matches = occupations.filter((occ) => {
+      const title = occ.title || "";
+      const slug = occ.slug || "";
+      return (
+        title.toLowerCase().includes(term) ||
+        slug.toLowerCase().includes(term)
+      );
+    });
+    if (profession) {
+      const selected = occupations.find((occ) => occ.slug === profession);
+      if (selected && !matches.some((occ) => occ.slug === selected.slug)) {
+        return [selected, ...matches];
+      }
+    }
+    return matches;
+  }, [occupations, professionSearch, profession]);
+  const hasProfessionMatches = useMemo(() => {
+    if (!professionSearch.trim()) return true;
+    const term = professionSearch.trim().toLowerCase();
+    return occupations.some((occ) => {
+      const title = occ.title || "";
+      const slug = occ.slug || "";
+      return (
+        title.toLowerCase().includes(term) ||
+        slug.toLowerCase().includes(term)
+      );
+    });
+  }, [occupations, professionSearch]);
 
   if (previewMode) {
     return (
@@ -896,7 +955,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors duration-500 pb-20 relative overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-500 pb-20 relative overflow-x-hidden">
       {/* Animated Background Elements */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '0s' }}></div>
@@ -1045,43 +1104,65 @@ export default function Home() {
             </div>
             <div>
               <label className="font-medium mb-2 block" htmlFor="profession-select">Profession</label>
-              <select
-                id="profession-select"
-                data-focus-key="profile.profession"
-                value={profession}
-                onChange={(e) => {
-                  markInteracted();
-                  const value = e.target.value;
-                  setProfession(value);
-                  if (value) {
-                    withFocusGuard(() => setCustomProfession(""));
-                  }
-                }}
-                className="flex h-9 w-full rounded-md border border-input bg-background text-foreground px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                style={{ 
-                  backgroundColor: 'hsl(var(--background))',
-                  color: 'hsl(var(--foreground))',
-                  appearance: 'auto'
-                }}
-                size={occupations.length > 10 ? undefined : undefined}
-              >
-                <option value="" style={{ backgroundColor: 'hsl(var(--background))', color: 'hsl(var(--foreground))' }}>
-                  Select a profession ({occupations.length} available)
-                </option>
-                {occupations.map((occ, index) => (
-                  <option 
-                    key={`${occ.slug}-${index}`} 
-                    value={occ.slug}
-                    style={{ backgroundColor: 'hsl(var(--background))', color: 'hsl(var(--foreground))' }}
-                  >
-                    {occ.title}
+              <div className="space-y-2">
+                <Input
+                  id="profession-search"
+                  data-focus-key="profile.professionSearch"
+                  value={professionSearch}
+                  onChange={(e) => setProfessionSearch(e.target.value)}
+                  placeholder="Search professions..."
+                />
+                <select
+                  id="profession-select"
+                  data-focus-key="profile.profession"
+                  value={profession}
+                  onChange={(e) => {
+                    markInteracted();
+                    const value = e.target.value;
+                    setProfession(value);
+                    if (value) {
+                      withFocusGuard(() => {
+                        setCustomProfession("");
+                      });
+                    }
+                  }}
+                  className="flex h-9 w-full rounded-md border border-input bg-background text-foreground px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                  style={{ 
+                    backgroundColor: 'hsl(var(--background))',
+                    color: 'hsl(var(--foreground))',
+                    appearance: 'auto'
+                  }}
+                >
+                  <option value="" style={{ backgroundColor: 'hsl(var(--background))', color: 'hsl(var(--foreground))' }}>
+                    Select a profession ({occupations.length} available)
                   </option>
-                ))}
-              </select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Scroll to see all {occupations.length} professions
-              </p>
-              <div className="mt-2">
+                  {filteredProfessions.map((occ, index) => (
+                    <option 
+                      key={`${occ.slug}-${index}`} 
+                      value={occ.slug}
+                      style={{ backgroundColor: 'hsl(var(--background))', color: 'hsl(var(--foreground))' }}
+                    >
+                      {occ.title}
+                    </option>
+                  ))}
+                  {filteredProfessions.length === 0 && (
+                    <option value="" disabled>
+                      No professions found
+                    </option>
+                  )}
+                </select>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    Showing {filteredProfessions.length} of {occupations.length} professions
+                  </span>
+                  {professionSearch && !hasProfessionMatches && (
+                    <span className="text-destructive">
+                      No matches
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="mt-3">
                 <label className="text-sm text-muted-foreground">Or enter a custom profession:</label>
                 <Input 
                   data-focus-key="profile.customProfession"
