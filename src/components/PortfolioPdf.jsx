@@ -39,11 +39,13 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: 700,
     color: "#1f2937",
+    marginBottom: 6,
   },
   headline: {
     fontSize: 13,
     fontWeight: 500,
-    marginTop: 4,
+    marginTop: 2,
+    marginBottom: 8,
   },
   contactRow: {
     flexDirection: "row",
