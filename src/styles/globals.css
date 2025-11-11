@@ -496,24 +496,40 @@ button, input, textarea, select, a {
 
 /* Print Styles for CV */
 @media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    height: auto !important;
+    min-height: auto !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-  }
-
-  body {
-    background: #fff !important;
   }
 
   .cv-container {
     box-shadow: none !important;
     border: none;
     background: #fff;
+    page-break-inside: avoid;
   }
 
   .cv-container::before,
   .cv-container::after {
     display: none !important;
+  }
+
+  .cv-section,
+  .cv-timeline,
+  .cv-project-card {
+    page-break-inside: avoid;
   }
 
   .cv-name {
@@ -535,6 +551,12 @@ button, input, textarea, select, a {
     background: linear-gradient(120deg, rgba(191, 219, 254, 0.9), rgba(165, 180, 252, 0.85)) !important;
     border-color: rgba(59, 130, 246, 0.3) !important;
     color: #14325b !important;
+  }
+
+  .cv-header-links a,
+  .cv-header-meta span,
+  .cv-contact-item {
+    color: #0f172a !important;
   }
 
   .premium-button,

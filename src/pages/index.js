@@ -145,6 +145,7 @@ export default function Home() {
   const [uploading, setUploading] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
   const [aiLoading, setAiLoading] = useState({});
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const fileInputRef = useRef(null);
   const hasMountedRef = useRef(false);
   const hasUserInteractedRef = useRef(false);
@@ -329,13 +330,14 @@ export default function Home() {
               </div>
               <div className="flex gap-2">
                 <Button 
-                  variant="outline" 
                   className="premium-button cinematic-glow-hover"
-                  onClick={() => window.print()}
+                  disabled={downloadingPdf}
+                  onClick={handleDownloadPDF}
                 >
-                  🖨️ Print / Save as PDF
+                  {downloadingPdf ? "Generating..." : "⬇️ Download PDF"}
                 </Button>
                 <Button 
+                  variant="outline" 
                   className="premium-button cinematic-glow"
                   onClick={() => setPreviewMode(false)}
                 >
@@ -853,6 +855,66 @@ export default function Home() {
       {isOpen && <CardContent className="pt-4">{children}</CardContent>}
     </Card>
   );
+
+  const handleDownloadPDF = async () => {
+    try {
+      setDownloadingPdf(true);
+      const element = document.querySelector('.cv-container');
+      if (!element) {
+        setStatus("Open preview before downloading.");
+        setDownloadingPdf(false);
+        return;
+      }
+
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+
+      const canvas = await html2canvas(element, {
+        scale: window.devicePixelRatio < 2 ? 2 : window.devicePixelRatio,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "pt", "a4");
+      const margin = 36;
+      const pageWidth = pdf.internal.pageSize.getWidth() - margin * 2;
+      const pageHeight = pdf.internal.pageSize.getHeight() - margin * 2;
+
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      const ratio = pageWidth / canvasWidth;
+      const imgHeight = canvasHeight * ratio;
+
+      let heightLeft = imgHeight;
+      let position = margin;
+
+      pdf.addImage(imgData, "PNG", margin, position, pageWidth, imgHeight, undefined, "FAST");
+      heightLeft -= pageHeight;
+
+      while (heightLeft > -pageHeight) {
+        if (heightLeft <= 0) {
+          break;
+        }
+        pdf.addPage();
+        position = margin - heightLeft;
+        pdf.addImage(imgData, "PNG", margin, position, pageWidth, imgHeight, undefined, "FAST");
+        heightLeft -= pageHeight;
+      }
+
+      const fileName = `${(profile.name || customProfession || professionTitle).replace(/\s+/g, "-") || "portfolio"}-cv.pdf`;
+      pdf.save(fileName);
+      setStatus("PDF downloaded");
+    } catch (err) {
+      console.error("Failed to download PDF", err);
+      setStatus("Failed to generate PDF");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-500 pb-20 relative overflow-hidden">
