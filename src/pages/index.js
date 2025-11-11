@@ -871,6 +871,8 @@ export default function Home() {
         import("jspdf"),
       ]);
 
+      element.classList.add("pdf-capture");
+
       const devicePixelRatio = window.devicePixelRatio || 1;
       const renderScale = Math.min(4, Math.max(2, devicePixelRatio * 2));
 
@@ -879,6 +881,8 @@ export default function Home() {
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
       });
 
       const imgData = canvas.toDataURL("image/png", 1.0);
@@ -915,6 +919,7 @@ export default function Home() {
       console.error("Failed to download PDF", err);
       setStatus("Failed to generate PDF");
     } finally {
+      element.classList.remove("pdf-capture");
       setDownloadingPdf(false);
     }
   }
