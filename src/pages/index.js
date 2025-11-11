@@ -346,7 +346,7 @@ export default function Home() {
           </div>
 
           {/* CV Container */}
-          <div className="max-w-4xl mx-auto bg-white shadow-2xl print:shadow-none my-8 print:my-0 rounded-lg overflow-hidden animate-fade-in-up cinematic-glow">
+          <div className="max-w-4xl mx-auto bg-white shadow-2xl print:shadow-none my-8 print:my-0 rounded-lg overflow-hidden animate-fade-in-up cinematic-glow cv-container">
             <div className="p-8 print:p-6">
               {/* CV Header */}
               <div className="border-b-2 border-primary pb-6 mb-6 bg-gradient-to-r from-blue-50/50 to-purple-50/50 -mx-8 px-8 py-6 print:bg-transparent">
@@ -356,13 +356,13 @@ export default function Home() {
                       {safeName}
                     </h1>
                     <p className="text-xl text-gray-600 mb-3 font-medium print:text-gray-900">{safeHeadline}</p>
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                    <div className="flex flex-wrap gap-3 text-sm text-gray-600 cv-header-meta">
                       {contactEntries.map((entry) => (
                         <span key={entry.label}>{entry.label}: {entry.value}</span>
                       ))}
                     </div>
                     {socialLinks.length > 0 && (
-                      <div className="flex flex-wrap gap-3 mt-3">
+                      <div className="flex flex-wrap gap-3 mt-3 cv-header-links">
                         {socialLinks.map((link) => (
                           <a key={link.label} href={link.value.startsWith("http") ? link.value : `https://${link.value}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">
                             {link.label}
@@ -399,9 +399,9 @@ export default function Home() {
                     <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
                     Key Responsibilities
                   </h2>
-                  <ul className="list-disc list-inside space-y-1 text-gray-700">
+                  <ul className="space-y-1 text-gray-700">
                     {responsibilitiesToShow.map((resp, i) => (
-                      <li key={i} className="leading-relaxed">{resp}</li>
+                      <li key={i} className="leading-relaxed cv-list-item">{resp}</li>
                     ))}
                   </ul>
                 </section>
@@ -416,7 +416,7 @@ export default function Home() {
                   </h2>
                   <div className="flex flex-wrap gap-2">
                     {skillNames.map((name) => (
-                      <span key={name} className="px-3 py-1 bg-gradient-to-r from-blue-50 to-purple-50 text-gray-800 rounded-md text-sm border border-blue-200 font-medium">
+                      <span key={name} className="cv-chip">
                         {name}
                       </span>
                     ))}
@@ -431,9 +431,9 @@ export default function Home() {
                     <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
                     Professional Experience
                   </h2>
-                  <div className="space-y-5">
+                  <div className="cv-timeline">
                     {experienceToShow.map((exp) => (
-                      <div key={exp.id} className="border-l-2 border-primary pl-4">
+                      <div key={exp.id} className="cv-timeline-item">
                         <div className="flex justify-between items-start mb-1">
                           <h3 className="font-semibold text-lg text-gray-900">{exp.role || "Role"}</h3>
                           <span className="text-sm text-gray-600 font-medium">{exp.period || experienceSummary || "Timeline"}</span>
@@ -455,9 +455,9 @@ export default function Home() {
                     <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
                     Education
                   </h2>
-                  <div className="space-y-4">
+                  <div className="cv-timeline">
                     {educationToShow.map((edu) => (
-                      <div key={edu.id} className="border-l-2 border-primary pl-4">
+                      <div key={edu.id} className="cv-timeline-item">
                         <div className="flex justify-between items-start mb-1">
                           <h3 className="font-semibold text-lg text-gray-900">{edu.degree || "Degree"}</h3>
                           <span className="text-sm text-gray-600 font-medium">{edu.period || "Timeline"}</span>
@@ -481,7 +481,7 @@ export default function Home() {
                   </h2>
                   <div className="space-y-4">
                     {projectsToShow.map((p) => (
-                      <div key={p.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50 print:bg-white">
+                      <div key={p.id} className="p-4 cv-project-card">
                         <div className="flex justify-between items-start mb-2">
                           <h3 className="font-semibold text-lg text-gray-900">{p.title || "Project Title"}</h3>
                           {p.link && (
@@ -515,9 +515,9 @@ export default function Home() {
                     <span className="w-1 h-6 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span>
                     Contact Information
                   </h2>
-                  <ul className="space-y-1 text-gray-700">
+                  <ul className="space-y-1 text-gray-700 cv-contact-list">
                     {contactEntries.map((entry) => (
-                      <li key={entry.label}><strong>{entry.label}:</strong> {entry.value}</li>
+                      <li key={entry.label} className="cv-contact-item"><strong>{entry.label}:</strong> {entry.value}</li>
                     ))}
                   </ul>
                 </section>
