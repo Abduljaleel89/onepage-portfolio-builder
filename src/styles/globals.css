@@ -574,3 +574,15 @@ button, input, textarea, select, a {
     display: none !important;
   }
 }
+
+/* Smooth theme transitions */
+:root.theme-transition,
+:root.theme-transition body {
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+:root.theme-transition body *,
+:root.theme-transition body *::before,
+:root.theme-transition body *::after {
+  transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease, fill 0.4s ease, stroke 0.4s ease;
+}

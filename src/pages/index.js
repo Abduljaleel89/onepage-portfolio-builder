@@ -144,6 +144,27 @@ export default function Home() {
   const persistTimeoutRef = useRef(null);
   const statusTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
+  const themeTransitionTimeoutRef = useRef(null);
+
+  const applyThemeTransition = useCallback(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    root.classList.add("theme-transition");
+    if (themeTransitionTimeoutRef.current) {
+      clearTimeout(themeTransitionTimeoutRef.current);
+    }
+    themeTransitionTimeoutRef.current = setTimeout(() => {
+      root.classList.remove("theme-transition");
+      themeTransitionTimeoutRef.current = null;
+    }, 400);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    const current = resolvedTheme || "light";
+    const nextTheme = current === "light" ? "dark" : "light";
+    applyThemeTransition();
+    setTheme(nextTheme);
+  }, [applyThemeTransition, resolvedTheme, setTheme]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -192,6 +213,10 @@ export default function Home() {
     () => () => {
       if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
       if (persistTimeoutRef.current) clearTimeout(persistTimeoutRef.current);
+      if (themeTransitionTimeoutRef.current) clearTimeout(themeTransitionTimeoutRef.current);
+      if (typeof document !== "undefined") {
+        document.documentElement.classList.remove("theme-transition");
+      }
     },
     []
   );
@@ -1006,7 +1031,7 @@ export default function Home() {
             size="icon"
             variant="ghost"
             className="glass-effect hover:bg-white/10"
-            onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
+            onClick={toggleTheme}
             aria-label="Toggle theme"
           >
             {resolvedTheme === "light" ? <MoonIcon /> : <SunIcon />}
