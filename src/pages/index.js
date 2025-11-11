@@ -857,21 +857,23 @@ export default function Home() {
   );
 
   async function handleDownloadPDF() {
+    let element;
     try {
       setDownloadingPdf(true);
-      const element = document.querySelector('.cv-container');
+      element = document.querySelector('.cv-container');
       if (!element) {
         setStatus("Open preview before downloading.");
         setDownloadingPdf(false);
         return;
       }
 
+      element.classList.add("pdf-capture");
+      document.body.classList.add("pdf-capture-body");
+
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import("html2canvas"),
         import("jspdf"),
       ]);
-
-      element.classList.add("pdf-capture");
 
       const devicePixelRatio = window.devicePixelRatio || 1;
       const renderScale = Math.min(4, Math.max(2, devicePixelRatio * 2));
@@ -919,9 +921,10 @@ export default function Home() {
       console.error("Failed to download PDF", err);
       setStatus("Failed to generate PDF");
     } finally {
-      if (element && element.classList) {
+      if (element) {
         element.classList.remove("pdf-capture");
       }
+      document.body.classList.remove("pdf-capture-body");
       setDownloadingPdf(false);
     }
   }

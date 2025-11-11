@@ -321,6 +321,15 @@ input:focus, textarea:focus, select:focus {
   pointer-events: none;
 }
 
+.pdf-capture-body {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.pdf-capture-body .cv-container {
+  box-shadow: none !important;
+}
+
 .cv-container.pdf-capture::before,
 .cv-container.pdf-capture::after {
   display: none !important;
