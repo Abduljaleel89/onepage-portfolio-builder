@@ -14,8 +14,10 @@ class MyDocument extends Document {
             rel="stylesheet"
           />
           {/* Fav icon placeholder - optional */}
-          <link rel="icon" href="/favicon.ico" />
+          <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
           <meta name="color-scheme" content="dark light" />
+          <meta name="theme-color" content="#f3f4f6" media="(prefers-color-scheme: light)" />
+          <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
         </Head>
         <body>
           <Main />
