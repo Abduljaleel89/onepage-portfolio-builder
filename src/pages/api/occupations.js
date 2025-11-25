@@ -1,6 +1,7 @@
 // src/pages/api/occupations.js
 import fs from "fs";
 import path from "path";
+import { createRateLimiter } from "@/lib/rateLimit";
 
 function tryReadFile(filePath) {
   try {
@@ -13,7 +14,16 @@ function tryReadFile(filePath) {
   }
 }
 
+const rateLimiter = createRateLimiter({ windowMs: 60000, max: 30 });
+
 export default function handler(req, res) {
+  // Apply rate limiting
+  rateLimiter(req, res, () => {
+    handleRequest(req, res);
+  });
+}
+
+function handleRequest(req, res) {
   try {
     // Look in two locations for convenience:
     // 1) repo root data/occupations.json (dev API route)

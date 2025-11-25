@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { createRateLimiter } from "@/lib/rateLimit";
 
 const DB_PATH = path.join(process.cwd(), "data", "db.json");
 
@@ -17,7 +18,15 @@ function writeDb(obj){
   fs.writeFileSync(DB_PATH, JSON.stringify(obj, null, 2), "utf8");
 }
 
-export default function handler(req, res){
+const rateLimiter = createRateLimiter({ windowMs: 60000, max: 20 });
+
+export default function handler(req, res) {
+  rateLimiter(req, res, () => {
+    handleRequest(req, res);
+  });
+}
+
+function handleRequest(req, res) {
   if (req.method === "GET") {
     const db = readDb();
     return res.status(200).json({ 

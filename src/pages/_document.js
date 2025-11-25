@@ -1,31 +1,35 @@
-// src/pages/_document.js
-import Document, { Html, Head, Main, NextScript } from "next/document";
+import { Html, Head, Main, NextScript } from "next/document";
 
-class MyDocument extends Document {
-  render() {
-    return (
-      <Html lang="en">
-        <Head>
-          {/* Preconnect & Google Inter font */}
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-          <link
-            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap"
-            rel="stylesheet"
-          />
-          {/* Fav icon placeholder - optional */}
-          <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-          <meta name="color-scheme" content="dark light" />
-          <meta name="theme-color" content="#f3f4f6" media="(prefers-color-scheme: light)" />
-          <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
-        </Head>
-        <body>
-          <Main />
-          <NextScript />
-        </body>
-      </Html>
-    );
-  }
+export default function Document() {
+  return (
+    <Html lang="en">
+      <Head>
+        <meta charSet="utf-8" />
+        <meta name="description" content="Create a professional portfolio and CV in minutes" />
+        <meta name="keywords" content="portfolio, cv, resume, builder, professional" />
+        <meta name="author" content="Portfolio Builder" />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="Portfolio Builder - Create Professional CVs" />
+        <meta property="og:description" content="Create a professional portfolio and CV in minutes" />
+        
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Portfolio Builder" />
+        <meta name="twitter:description" content="Create a professional portfolio and CV in minutes" />
+        
+        {/* Favicon */}
+        <link rel="icon" href="/favicon.ico" />
+        
+        {/* Preconnect for performance */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </Head>
+      <body>
+        <Main />
+        <NextScript />
+      </body>
+    </Html>
+  );
 }
-
-export default MyDocument;
